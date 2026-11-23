@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Advisement Schedule Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE work tool for department coordinators: calm, exact, trustworthy
+   IDEA a print shop proofing station: the spreadsheet goes in on the left, the proof of the finished page sits on the right
+   PICTURE the live, scaled proof of the generated schedule, switchable by version and device width
+   COLOUR white ground, near-black ink, the department's own accent as the header field and active controls; amber warnings, red errors
+   TYPE Instrument Sans throughout, 700 for headings
+   LAYOUT laptop: accent band, then controls (5 parts) beside a sticky proof (7 parts); phone: band, proof, controls */
+:root{color-scheme:light dark;--accent:#1d4f91;--accent-light:#8fa9cc;--bg:#ffffff;--ink:#14181d;--muted:#5b6572;--line:#dce1e7;--panel:#f5f7f9;--field:#ffffff;--stage:#e9edf1;--link:var(--accent);--warn:#7a4f00;--warn-bg:#fff5d6;--err:#a11d12;--err-bg:#fdeceb;--ok:#17663a}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0f1216;--ink:#e7eaee;--muted:#9ba5b2;--line:#2b313a;--panel:#161a20;--field:#0c0f13;--stage:#1b2027;--link:var(--accent-light);--warn:#f1c35a;--warn-bg:#2a2310;--err:#ff9b91;--err-bg:#2d1512;--ok:#7ed29d}}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark;--bg:#0f1216;--ink:#e7eaee;--muted:#9ba5b2;--line:#2b313a;--panel:#161a20;--field:#0c0f13;--stage:#1b2027;--link:var(--accent-light);--warn:#f1c35a;--warn-bg:#2a2310;--err:#ff9b91;--err-bg:#2d1512;--ok:#7ed29d}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:clip}
+a{color:var(--link)}
+.top{background:var(--accent);color:#fff;padding:24px max(16px,3vw) 22px}
+.top-in{max-width:1440px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 40px}
+h1{margin:0;font-size:clamp(30px,3.4vw,42px);line-height:1.05;letter-spacing:-.02em;font-weight:700;text-wrap:balance}
+.lede{margin:8px 0 0;max-width:60ch;color:#fff;opacity:.92}
+.figs{display:flex;flex-wrap:wrap;gap:8px 28px}
+.fig-n{display:block;font-size:32px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.fig-l{font-size:13.5px;opacity:.88}
+.wrap{max-width:1440px;margin:0 auto;padding:24px max(16px,3vw) 40px;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);grid-template-areas:"data data" "details proof" "code proof";grid-template-rows:auto auto 1fr;gap:24px 28px;align-items:start}
+.data{grid-area:data}
+.data-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 36px}
+.allclear{margin-top:10px;padding:10px 12px;border-radius:8px;background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--ok);font-size:14.5px;font-weight:600}
+.details{grid-area:details}
+.code{grid-area:code}
+.proof{grid-area:proof;position:sticky;top:16px;align-self:start}
+.card{border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--bg)}
+h2{margin:0 0 4px;font-size:21px;line-height:1.2;letter-spacing:-.01em}
+h3{margin:0;font-size:17px}
+.hint{margin:4px 0 0;color:var(--muted);font-size:14.5px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--ink);font:inherit;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none}
+.btn:hover{border-color:var(--link)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.small{min-height:36px;padding:0 12px;font-size:14px}
+.btn.confirm{background:var(--err-bg);border-color:var(--err);color:var(--err)}
+.btn[hidden]{display:none}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid #f2b705;outline-offset:2px}
+.drop{display:block;position:relative;font-weight:400;cursor:pointer;margin-top:12px;border:2px dashed var(--line);border-radius:12px;padding:18px 16px;text-align:center;background:var(--panel);transition:border-color .15s,background-color .15s}
+.drop:focus-within{outline:3px solid #f2b705;outline-offset:2px}
+.drop.over{border-color:var(--link);background:color-mix(in srgb,var(--accent) 9%,var(--panel))}
+.drop strong{display:block;font-size:16px}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.status{margin-top:12px;font-size:15px}
+.status b{font-variant-numeric:tabular-nums}
+.sample{margin:6px 0 0;font-size:13.5px;color:var(--muted)}
+.issues{display:grid;gap:6px;margin-top:10px;max-height:260px;overflow:auto}
+.issue{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;padding:8px 10px;border-radius:8px;font-size:14px;line-height:1.4}
+.issue.warn{background:var(--warn-bg)}
+.issue.err{background:var(--err-bg)}
+.issue .k{font-weight:700;white-space:nowrap}
+.issue.warn .k{color:var(--warn)}
+.issue.err .k{color:var(--err)}
+details{margin-top:12px}
+summary{cursor:pointer;font-weight:600;font-size:15px;min-height:32px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;margin-top:8px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;color:var(--muted);font-weight:600}
+td.t{white-space:nowrap;font-variant-numeric:tabular-nums}
+code{font:13.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--panel);padding:1px 5px;border-radius:5px;overflow-wrap:anywhere}
+label{display:block;font-size:14px;font-weight:600;margin:12px 0 4px}
+input[type=text],input[type=url],input[type=date],input[type=search],textarea{width:100%;font:inherit;font-size:16px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--field);color:var(--ink)}
+textarea{resize:vertical;line-height:1.45}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.color{display:flex;gap:8px;align-items:center}
+.color input[type=color]{width:52px;height:44px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--field);flex:none}
+.fieldnote{margin:4px 0 0;font-size:13.5px;color:var(--muted)}
+.fieldnote.warnline{color:var(--warn)}
+.out{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:12px}
+.out-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px}
+.pill{font-size:12.5px;font-weight:700;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok);white-space:nowrap}
+.chars{font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+textarea.code{font:12.5px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;height:200px;white-space:pre;overflow:auto}
+ol.steps{margin:8px 0 0;padding-left:22px;font-size:15px}
+ol.steps li{margin:4px 0}
+.proof-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.proof-head h2{margin:0}
+.segs{display:flex;flex-wrap:wrap;gap:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--field)}
+.seg button{min-height:38px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed=true]{background:var(--accent);color:#fff}
+.stage{position:relative;height:min(78vh,880px);border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--stage)}
+.stage iframe{position:absolute;top:0;left:0;border:0;background:#fff;transform-origin:0 0}
+.stage .empty[hidden],.stage iframe[hidden]{display:none}
+.stage .empty{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted)}
+.stage-note{margin:8px 0 0;font-size:13.5px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;max-width:calc(100vw - 32px)}
+.toast.show{opacity:1}
+.foot{max-width:1440px;margin:0 auto;padding:0 max(16px,3vw) 32px;font-size:13.5px;color:var(--muted)}
+.ed-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.ed-tools input[type=search]{flex:1 1 200px;width:auto;min-height:44px}
+.check{display:inline-flex;align-items:center;gap:8px;margin:0;font-weight:500;font-size:14.5px;min-height:44px;cursor:pointer}
+.check input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
+.ib{flex:none;width:40px;height:40px;display:inline-grid;place-items:center;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--muted);cursor:pointer;padding:0}
+.ib:hover{color:var(--ink);border-color:var(--link)}
+.ib.del:hover{color:var(--err);border-color:var(--err)}
+.ib svg{width:18px;height:18px;transition:transform .15s}
+.ib[aria-expanded=true] svg{transform:rotate(180deg)}
+.pchips{display:flex;flex-wrap:wrap;gap:6px}
+.pchip{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--field);color:var(--muted);font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.pchip[aria-pressed=true]{color:var(--pc);background:var(--pb);border-color:var(--pc)}
+.editor{margin-top:18px}
+.editor>summary{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);font-size:16px;min-height:48px}
+.editor[open]>summary{border-color:var(--link)}
+.ed-sub{font-weight:500;font-size:14px;color:var(--muted)}
+.ed-fix{font-size:13px;font-weight:700;color:var(--err)}
+.sheet{overflow:auto;max-height:min(72vh,800px);border:1px solid var(--line);border-radius:12px;background:var(--bg);overscroll-behavior:contain}
+table.grid{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;margin:0;font-size:15px}
+.grid th{position:sticky;top:0;z-index:2;background:var(--panel);text-align:left;font-size:13px;font-weight:700;color:var(--muted);padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.grid td{padding:3px 4px;border-bottom:1px solid var(--line);vertical-align:middle;background:var(--bg)}
+.grid input,.grid select{display:block;font:inherit;font-size:15px;min-height:38px;padding:6px 8px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--ink);width:100%}
+.grid input:hover,.grid select:hover{border-color:var(--line)}
+.grid input:focus,.grid select:focus{border-color:var(--link);background:var(--field);outline:2px solid #f2b705;outline-offset:0}
+.grid input::placeholder{color:var(--muted);opacity:.45}
+.grid .c-n{position:sticky;left:0;z-index:1;width:116px;min-width:116px;white-space:nowrap}
+.grid .c-prof{position:sticky;left:116px;z-index:1;box-shadow:1px 0 0 var(--line)}
+.grid th.c-n,.grid th.c-prof{z-index:3}
+.grid .c-prof input{min-width:190px;font-weight:600}
+.cn-in{display:flex;align-items:center;gap:4px}
+.rn{display:inline-block;min-width:28px;font-size:13px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.ib.sm{width:34px;height:34px}
+.ib.sm svg{width:16px;height:16px}
+.grid select[data-f=day]{min-width:128px}
+.grid select[data-f=mode]{min-width:186px}
+.grid input[type=time]{min-width:122px}
+.grid input[data-f=room]{min-width:96px}
+.grid input[data-f=email]{min-width:230px}
+.grid input[data-f=zoom],.grid input[data-f=book]{min-width:240px}
+.grid input[data-f=notes]{min-width:280px}
+.grid .c-prog{min-width:150px}
+.grid .pchips{gap:4px}
+.grid .pchip{min-height:30px;padding:0 9px;font-size:13px}
+tr.gr.warn td.c-n{box-shadow:inset 4px 0 0 #d49a00}
+tr.gr.err td{background:var(--err-bg)}
+tr.gr.err td.c-n{box-shadow:inset 4px 0 0 var(--err)}
+tr.gr.has-msg td{border-bottom-color:transparent}
+tr.gm td{padding:0 8px 8px;background:var(--bg)}
+tr.gm.err td{background:var(--err-bg)}
+.gm-t{position:sticky;left:12px;display:inline-block;max-width:min(900px,calc(100vw - 96px));font-size:13.5px;line-height:1.45;padding-left:116px}
+.gm-t span{display:block}
+.gm-t .e{color:var(--err)}
+.gm-t .w{color:var(--warn)}
+tr.flash td{background:color-mix(in srgb,#f2b705 22%,var(--bg))!important}
+.ed-empty{padding:18px;text-align:center;color:var(--muted)}
+@media (max-width:700px){.grid .c-prof{position:static;box-shadow:none}.grid input,.grid select{font-size:16px}.gm-t{padding-left:0}}
+.pnone{font-size:13.5px;color:var(--muted)}
+.progs{display:grid;gap:6px;margin-top:4px}
+.pr{display:grid;grid-template-columns:14px 96px minmax(0,1fr) auto 40px;gap:8px;align-items:center}
+.sw{width:14px;height:14px;border-radius:50%;border:2px solid}
+.pr input{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--ink);min-height:40px;width:100%}
+.pr-code{text-transform:uppercase;font-weight:700}
+.pr-n{font-size:13px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.issue{cursor:pointer;border:0;font:inherit;font-size:14px;line-height:1.4;color:inherit;text-align:left;width:100%}
+.issue:hover{filter:brightness(.97)}
+.toast{display:flex;align-items:center;gap:14px}
+.toast.show.has-act{pointer-events:auto}
+#toast-act{background:none;border:0;color:inherit;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;min-height:32px;padding:0}
+@media (max-width:900px){.data-top{grid-template-columns:minmax(0,1fr)}}
+.wrap.stack{grid-template-columns:minmax(0,1fr);grid-template-areas:"data" "details" "proof" "code";grid-template-rows:auto}
+.wrap.stack .proof{position:static}
+.wrap.stack .stage{height:min(84vh,980px)}
+.wrap.stack .details .grid2{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1040px){.wrap,.wrap.stack{grid-template-columns:minmax(0,1fr);grid-template-areas:"data" "details" "proof" "code";grid-template-rows:auto}.proof{position:static}.stage,.wrap.stack .stage{height:min(72vh,760px)}.wrap.stack .details .grid2{grid-template-columns:repeat(2,minmax(0,1fr))}.layout-seg{display:none}}
+@media (max-width:520px){.grid2,.wrap.stack .details .grid2{grid-template-columns:minmax(0,1fr)}.pr{grid-template-columns:14px 78px minmax(0,1fr) 40px}.pr-n{display:none}.card{padding:16px 14px}.figs{gap:8px 20px}.fig-n{font-size:26px}table{font-size:13px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin:16px 0 0;border-bottom:1px solid var(--line)}
+.tabs [role=tab]{min-height:46px;padding:0 18px;border:1px solid transparent;border-bottom:0;border-radius:10px 10px 0 0;background:transparent;color:var(--muted);font:inherit;font-size:15.5px;font-weight:600;cursor:pointer;margin-bottom:-1px}
+.tabs [role=tab]:hover{color:var(--ink)}
+.tabs [role=tab][aria-selected=true]{background:var(--bg);color:var(--ink);border-color:var(--line);box-shadow:inset 0 3px 0 var(--accent)}
+.tc{display:inline-block;min-width:26px;padding:0 7px;margin-left:6px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;text-align:center}
+.tabpanel{padding-top:4px}
+.tabpanel[hidden]{display:none}
+#s-body input::placeholder{color:var(--muted);font-style:italic;opacity:.85}
+.grid .c-prof select{min-width:210px;font-weight:600}
+.grid .c-cnt{white-space:nowrap}
+.linkbtn{background:none;border:0;color:var(--link);font:inherit;font-size:14.5px;font-weight:600;text-decoration:underline;text-underline-offset:2px;cursor:pointer;min-height:38px;padding:0 8px;border-radius:6px}
+.btn svg{flex:none}
+body.fs-open{overflow:hidden}
+dialog#fs{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:var(--bg);color:var(--ink)}
+dialog#fs[open]{display:flex;flex-direction:column}
+dialog#fs::backdrop{background:#000000;opacity:.55}
+.fs-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px max(16px,2vw);border-bottom:1px solid var(--line)}
+.fs-bar h2{margin:0 auto 0 0}
+.proof-title{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+#fs-close{order:2}
+@media (max-width:760px){.fs-bar{padding:10px 12px;gap:8px}.fs-bar h2{font-size:18px}.fs-bar .segs{order:3;width:100%;gap:6px}.fs-bar .seg button{min-height:36px;padding:0 11px;font-size:13.5px}}
+.pr{grid-template-columns:14px 96px minmax(0,1fr) 80px 40px}
+.pr-n{text-align:right}
+@media (max-width:520px){.pr{grid-template-columns:14px 78px minmax(0,1fr) 40px}}
+.sortgrp{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
+.sortl{font-size:14px;font-weight:600;color:var(--muted);margin-right:2px}
+fieldset.radios{border:0;padding:0;margin:14px 0 0;min-width:0}
+fieldset.radios legend{font-size:14px;font-weight:600;padding:0;margin:0 0 2px}
+.radio-row{display:flex;flex-wrap:wrap;gap:0 22px}
+#h-code{scroll-margin-top:16px}
+#h-code:focus{outline:none}
+#h-code:focus-visible{outline:3px solid #f2b705;outline-offset:4px}
+.fs-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;background:var(--stage)}
+.fs-stage iframe{position:absolute;top:0;left:0;border:0;background:#fff;transform-origin:0 0}
+
+</style>
+</head>
+<body>
+<header class="top">
+<div class="top-in">
+<div>
+<h1>Advisement Schedule Builder</h1>
+<p class="lede">Turn a spreadsheet of faculty advising hours into a student-friendly schedule you can paste into an OpenLab (WordPress) Custom HTML block.</p>
+</div>
+<div class="figs" aria-live="polite">
+<div><span class="fig-n" id="n-slots">0</span><span class="fig-l">advising slots</span></div>
+<div><span class="fig-n" id="n-profs">0</span><span class="fig-l">advisors</span></div>
+<div><span class="fig-n" id="n-days">0</span><span class="fig-l">days</span></div>
+<div><span class="fig-n" id="n-issues">0</span><span class="fig-l" id="l-issues">to check</span></div>
+</div>
+</div>
+</header>
+<main class="wrap" id="wrap">
+<section class="card data" aria-labelledby="h-data">
+<div class="data-top">
+<div>
+<h2 id="h-data">Load your schedule</h2>
+<p class="hint">Use the workbook template: a <b>Faculty</b> sheet with each advisor's details entered once, and a <b>Slots</b> sheet with one row per advising slot. Fill it in with Excel or Google Sheets, then bring it back here. Make changes in Edit data below.</p>
+<div class="row">
+<button type="button" class="btn dl" id="b-template">Download workbook template</button>
+<button type="button" class="btn dl" id="b-export">Download this schedule (.xlsx)</button>
+<button type="button" class="btn small" id="b-copy-table">Copy current table</button>
+</div>
+<label class="drop" id="drop" for="file"><strong>Drop your workbook or CSV files here, or choose them</strong><span class="hint">An .xlsx workbook, two CSVs (faculty and slots), or one combined CSV</span><input type="file" id="file" multiple accept=".xlsx,.csv,.tsv,.txt,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+<details id="paste-box">
+<summary>Paste rows from a spreadsheet instead</summary>
+<label for="paste">Copy the cells from one sheet, including the header row, and paste them here</label>
+<textarea id="paste" rows="5" placeholder="Professor	Day	Start	End	Mode"></textarea>
+<div class="row"><button type="button" class="btn primary small" id="b-paste">Use these rows</button></div>
+</details>
+<details class="dl-more">
+<summary>Other download formats</summary>
+<div class="row">
+<button type="button" class="btn small dl" id="b-fac-csv">Faculty (.csv)</button>
+<button type="button" class="btn small dl" id="b-slots-csv">Slots (.csv)</button>
+<button type="button" class="btn small dl" id="b-flat-csv">One combined table (.csv)</button>
+</div>
+<div class="row">
+<button type="button" class="btn small dl" id="b-tpl-fac">Faculty template (.csv)</button>
+<button type="button" class="btn small dl" id="b-tpl-slots">Slots template (.csv)</button>
+</div>
+</details>
+<details>
+<summary>Format guide</summary>
+<p class="hint"><b>Faculty sheet</b>, one row per advisor:</p>
+<div class="scroll"><table>
+<thead><tr><th>Column</th><th>Needed</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td>Professor</td><td>Yes</td><td>Shari Mekonen</td></tr>
+<tr><td>Email</td><td>Recommended</td><td>smekonen@bmcc.cuny.edu</td></tr>
+<tr><td>Programs</td><td>Optional</td><td>Codes separated by semicolons: <code>ANI; MMD</code></td></tr>
+<tr><td>Room</td><td>Optional</td><td>S-622D. Shown only on in-person slots.</td></tr>
+<tr><td>Zoom Link, Booking Link</td><td>Optional</td><td>Full https:// links. Shown only on online slots.</td></tr>
+<tr><td>Notes</td><td>Optional</td><td>Email for an online appointment</td></tr>
+</tbody></table></div>
+<p class="hint"><b>Slots sheet</b>, one row per advising slot:</p>
+<div class="scroll"><table>
+<thead><tr><th>Column</th><th>Needed</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td>Professor</td><td>Yes</td><td>Must match a name on the Faculty sheet</td></tr>
+<tr><td>Day</td><td>Yes</td><td>Monday or Mon. <code>Mon/Wed</code> makes one slot per day.</td></tr>
+<tr><td>Start, End</td><td>Yes</td><td>12:00 PM and 1:30 PM. A single Time column like <code>12pm-1:30pm</code> also works.</td></tr>
+<tr><td>Mode</td><td>Yes</td><td>In Person, Online, or In Person or Online</td></tr>
+<tr><td>Room, Zoom Link, Booking Link, Notes</td><td>Only if different</td><td>Leave blank to use the advisor's details from the Faculty sheet</td></tr>
+</tbody></table></div>
+<p class="hint">Column names are flexible (Name, Faculty, Format, Major(s), Location and Link also work), and extra columns are ignored. A single combined CSV with every column also works: shared details move to the Faculty tab automatically.</p>
+</details>
+<div class="row"><button type="button" class="btn small" id="b-new">Start a new schedule</button><button type="button" class="btn small" id="b-example">Load the MEA example</button></div>
+</div>
+<div>
+<h2>Check before you publish</h2>
+<div class="status" id="status" aria-live="polite"></div>
+<p class="sample" id="sample-note">Example data: the MEA Department's Fall 2026 advising hours at BMCC.</p>
+<div class="issues" id="issues"></div>
+<div class="row"><button type="button" class="btn" id="b-jump"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>Jump to Get the embed code</button></div>
+</div>
+</div>
+<details id="editor" class="editor">
+<summary><span id="ed-sum">Edit data</span><span class="ed-sub">faculty details and advising slots</span><span class="ed-fix" id="ed-fix"></span></summary>
+<div class="tabs" role="tablist" aria-label="Data tables">
+<button type="button" role="tab" id="tab-s" aria-controls="panel-s" aria-selected="true">Advising slots <span class="tc" id="tc-s"></span></button>
+<button type="button" role="tab" id="tab-f" aria-controls="panel-f" aria-selected="false" tabindex="-1">Faculty <span class="tc" id="tc-f"></span></button>
+</div>
+<div class="tabpanel" id="panel-s" role="tabpanel" aria-labelledby="tab-s">
+<p class="hint">One line per slot. Room, links and notes come from the Faculty tab, shown in <i>grey italics</i>. Type in a cell only when this slot is different. Rooms show on in-person slots, links on online slots.</p>
+<div class="ed-tools">
+<input type="search" id="s-filter" placeholder="Filter by name, day or room" aria-label="Filter slots" autocomplete="off">
+<label class="check"><input type="checkbox" id="s-only"> Only slots to fix</label>
+<button type="button" class="btn small primary" id="s-add">Add a slot</button>
+<div class="sortgrp" role="group" aria-labelledby="l-s-sort"><span class="sortl" id="l-s-sort">Sort by</span><button type="button" class="btn small" data-ssort="time">Day and time</button><button type="button" class="btn small" data-ssort="first">First name</button><button type="button" class="btn small" data-ssort="last">Last name</button></div>
+</div>
+<div class="sheet" id="s-sheet"><table class="grid"><thead><tr><th class="c-n">Slot</th><th class="c-prof">Professor</th><th>Day</th><th>Start</th><th>End</th><th>Format</th><th>Room</th><th>Zoom link</th><th>Booking link</th><th>Notes</th></tr></thead><tbody id="s-body"></tbody></table></div>
+<div class="row"><button type="button" class="btn small" id="s-add2">Add a slot</button></div>
+</div>
+<div class="tabpanel" id="panel-f" role="tabpanel" aria-labelledby="tab-f" hidden>
+<p class="hint">One line per advisor. Enter email, programs, usual room, links and notes once; every slot for that advisor uses them.</p>
+<div class="ed-tools">
+<input type="search" id="f-filter" placeholder="Filter by name, email, room or program" aria-label="Filter faculty" autocomplete="off">
+<label class="check"><input type="checkbox" id="f-only"> Only advisors to fix</label>
+<button type="button" class="btn small primary" id="f-add">Add an advisor</button>
+<div class="sortgrp" role="group" aria-labelledby="l-f-sort"><span class="sortl" id="l-f-sort">Sort by</span><button type="button" class="btn small" data-fsort="first">First name</button><button type="button" class="btn small" data-fsort="last">Last name</button></div>
+</div>
+<div class="sheet" id="f-sheet"><table class="grid"><thead><tr><th class="c-n">Advisor</th><th class="c-prof">Name</th><th>Email</th><th>Programs</th><th>Usual room</th><th>Zoom link</th><th>Booking link</th><th>Notes</th><th>Slots</th></tr></thead><tbody id="f-body"></tbody></table></div>
+<div class="row"><button type="button" class="btn small" id="f-add2">Add an advisor</button></div>
+</div>
+</details>
+</section>
+<section class="card details" aria-labelledby="h-details">
+<h2 id="h-details">Page details</h2>
+<p class="hint">These fill the header, program badges and help boxes. Saved in this browser as you type.</p>
+<div class="grid2">
+<div><label for="f-dept">Department</label><input type="text" id="f-dept" data-set="dept" autocomplete="off"></div>
+<div><label for="f-college">College</label><input type="text" id="f-college" data-set="college" autocomplete="off"></div>
+<div><label for="f-title">Page title</label><input type="text" id="f-title" data-set="title" autocomplete="off"></div>
+<div><label for="f-semester">Semester</label><input type="text" id="f-semester" data-set="semester" autocomplete="off"></div>
+</div>
+<label for="f-subtitle">Subtitle</label><input type="text" id="f-subtitle" data-set="subtitle" autocomplete="off">
+<label id="l-programs">Programs</label>
+<div class="progs" id="progs" role="group" aria-labelledby="l-programs"></div>
+<div class="row" style="margin-top:8px"><button type="button" class="btn small" id="p-add">Add a program</button></div>
+<p class="fieldnote">The code appears on badges and filters. Assign programs to advisors on the Faculty tab. Renaming a code updates every advisor who has it.</p>
+<fieldset class="radios"><legend>List professors by</legend><div class="radio-row"><label class="check"><input type="radio" name="nsort" value="first"> First name</label><label class="check"><input type="radio" name="nsort" value="last"> Last name</label></div><p class="fieldnote">Orders the directory by professor in both versions. In the interactive version this is the starting order of the By professor view; students can switch it.</p></fieldset>
+<div class="grid2">
+<div><label for="f-accent-hex">Accent colour</label><div class="color"><input type="color" id="f-accent" aria-label="Pick accent colour"><input type="text" id="f-accent-hex" autocomplete="off" spellcheck="false"></div><p class="fieldnote" id="accent-note"></p></div>
+<div><label for="f-updated">Last updated</label><input type="date" id="f-updated" data-set="updated"></div>
+</div>
+<label for="f-ip">In person box</label><textarea id="f-ip" data-set="ip" rows="2"></textarea>
+<label for="f-on">Online box</label><textarea id="f-on" data-set="on" rows="2"></textarea>
+<label for="f-flex">In person or online box</label><textarea id="f-flex" data-set="flex" rows="2"></textarea>
+<p class="fieldnote">Wrap words in <code>**double asterisks**</code> to make them bold. Leave a box empty to hide it.</p>
+<details>
+<summary>More options</summary>
+<label for="f-banner">Banner image URL</label><input type="url" id="f-banner" data-set="banner" placeholder="https://" autocomplete="off">
+<p class="fieldnote">Upload the image to your OpenLab Media Library and paste its link. Must start with https://.</p>
+<label for="f-tz">Time zone</label><input type="text" id="f-tz" data-set="tz" autocomplete="off" spellcheck="false">
+<p class="fieldnote">Used for the interactive version's Today and Now badges.</p>
+<label for="f-foot">Footer note</label><input type="text" id="f-foot" data-set="foot" autocomplete="off">
+</details>
+</section>
+<section class="proof" aria-labelledby="h-proof">
+<div class="proof-head">
+<div class="proof-title"><h2 id="h-proof">Preview</h2><button type="button" class="btn small" id="b-full" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Full screen</button></div>
+<div class="segs">
+<div class="seg" role="group" aria-label="Version"><button type="button" data-ver="static" aria-pressed="true">Static</button><button type="button" data-ver="inter" aria-pressed="false">Interactive</button></div>
+<div class="seg" role="group" aria-label="Screen size"><button type="button" data-dev="desktop" aria-pressed="true">Desktop</button><button type="button" data-dev="tablet" aria-pressed="false">Tablet</button><button type="button" data-dev="phone" aria-pressed="false">Phone</button></div>
+<div class="seg layout-seg" role="group" aria-label="Page layout"><button type="button" data-layout="side" aria-pressed="true">Side by side</button><button type="button" data-layout="stack" aria-pressed="false">Stacked</button></div>
+</div>
+</div>
+<div class="stage" id="stage"><iframe id="frame" title="Schedule preview" sandbox="allow-scripts"></iframe><div class="empty" id="stage-empty" hidden>Add at least one complete slot to see the schedule.</div></div>
+<p class="stage-note">Links don't open from the preview, and a banner image only appears on your own site.</p>
+</section>
+<section class="card code" aria-labelledby="h-code">
+<h2 id="h-code" tabindex="-1">Get the embed code</h2>
+<p class="hint">Both versions are self-contained: no plugins, no outside files.</p>
+<div class="out">
+<div class="out-head"><h3>Static version</h3><span class="pill">Works on OpenLab</span></div>
+<p class="hint">Plain HTML with inline styles, so WordPress keeps it intact. Days fold open and closed, with jump links and a directory by professor.</p>
+<div class="row"><button type="button" class="btn primary" id="c-static">Copy code</button><button type="button" class="btn dl" id="d-static">Download .html</button><span class="chars" id="n-static"></span></div>
+<details><summary>View code</summary><textarea class="code" id="t-static" readonly spellcheck="false" aria-label="Static version code"></textarea></details>
+</div>
+<div class="out">
+<div class="out-head"><h3>Interactive version</h3></div>
+<p class="hint">Search, day, format and program filters, plus a live Now badge. WordPress removes its script unless you are a network admin, so host it as its own page (for example on GitHub Pages) and link to it.</p>
+<div class="row"><button type="button" class="btn" id="c-inter">Copy code</button><button type="button" class="btn dl" id="d-inter">Download .html</button><button type="button" class="btn dl" id="d-page">Download full web page</button><span class="chars" id="n-inter"></span></div>
+<details><summary>View code</summary><textarea class="code" id="t-inter" readonly spellcheck="false" aria-label="Interactive code"></textarea></details>
+</div>
+<h3 style="margin-top:16px">Add it to OpenLab</h3>
+<ol class="steps">
+<li>Open your page in the WordPress editor and add a <b>Custom HTML</b> block (+ &rarr; Custom HTML).</li>
+<li>Paste the static version&rsquo;s code into the block.</li>
+<li>Click <b>Preview</b>, then <b>Update</b>. Next semester, load the new workbook here and replace the block's code.</li>
+</ol>
+</section>
+</main>
+<p class="foot">Everything runs in your browser: your files are never uploaded anywhere.</p>
+<dialog id="fs" aria-labelledby="fs-title">
+<div class="fs-bar">
+<h2 id="fs-title">Preview</h2>
+<div class="segs">
+<div class="seg" role="group" aria-label="Version"><button type="button" data-ver="static" aria-pressed="true">Static</button><button type="button" data-ver="inter" aria-pressed="false">Interactive</button></div>
+<div class="seg" role="group" aria-label="Screen size"><button type="button" data-dev="desktop" aria-pressed="true">Desktop</button><button type="button" data-dev="tablet" aria-pressed="false">Tablet</button><button type="button" data-dev="phone" aria-pressed="false">Phone</button></div>
+</div>
+<button type="button" class="btn small" id="fs-close">Close<span class="sr-only"> full screen preview</span></button>
+</div>
+<div class="fs-stage" id="fs-stage"><iframe id="fs-frame" title="Full screen schedule preview" sandbox="allow-scripts"></iframe></div>
+</dialog>
+<div class="toast" id="toast" role="status"><span id="toast-msg"></span><button type="button" id="toast-act" hidden></button></div>
+<script>
+{
+const DAYS_ALL=[["Mon","Monday"],["Tue","Tuesday"],["Wed","Wednesday"],["Thu","Thursday"],["Fri","Friday"],["Sat","Saturday"],["Sun","Sunday"]];
+const PAL=[["#5b3aa8","#efe9fa"],["#8f4500","#fcefe0"],["#a3204f","#fae7ee"],["#0f6b5c","#ddf3ee"],["#4d5d00","#eef3d3"],["#3d3aa8","#e9e8fb"],["#7a4a1f","#f3ebe3"],["#4a5563","#eceff3"]];
+const CSS_TPL="#adv-sched{--as-ink:#1d232b;--as-muted:#5a6573;--as-line:#dfe3e8;--as-soft:#f5f7fa;--as-accent:@@A@@;--as-accent-dark:@@AD@@;--as-accent-soft:@@AS@@;--as-ip:#17663a;--as-ip-bg:#e3f3e8;--as-on:#0b55a3;--as-on-bg:#e3eefa;--as-now:#b42318;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--as-ink);max-width:1120px;margin:0 auto;text-align:left}\n#adv-sched *,#adv-sched *::before,#adv-sched *::after{box-sizing:border-box}\n#adv-sched [hidden]{display:none!important}\n#adv-sched h2,#adv-sched h3,#adv-sched h4,#adv-sched p{margin:0;padding:0;border:0;background:none;font-family:inherit;color:inherit;letter-spacing:normal;text-transform:none;font-style:normal}\n#adv-sched h2::before,#adv-sched h2::after,#adv-sched h3::before,#adv-sched h3::after,#adv-sched h4::before,#adv-sched h4::after{content:none;display:none}\n#adv-sched a{color:var(--as-accent);text-decoration:none;box-shadow:none;border:0;background:none}\n#adv-sched a:hover{text-decoration:underline}\n#adv-sched button{-webkit-appearance:none;appearance:none;font:inherit;margin:0;text-transform:none;letter-spacing:normal;box-shadow:none;text-shadow:none;cursor:pointer;width:auto;min-height:0;line-height:1.2;border-radius:0}\n#adv-sched svg{display:block;width:16px;height:16px;flex:none}\n#adv-sched :focus-visible{outline:3px solid #f2b705;outline-offset:2px}\n#adv-sched .as-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}\n#adv-sched .as-banner{display:block;width:100%;height:auto;border-radius:12px;margin:0 0 16px}\n#adv-sched .as-hero{background:var(--as-accent);color:#fff;border-radius:14px;padding:28px 28px 24px}\n#adv-sched .as-eyebrow{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.85}\n#adv-sched .as-title{font-size:34px;font-weight:800;line-height:1.15;margin:6px 0 4px;color:#fff}\n#adv-sched .as-sub{font-size:16px;opacity:.92}\n#adv-sched .as-programs{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}\n#adv-sched .as-prog{font-size:14px;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.28)}\n#adv-sched .as-prog strong{margin-right:5px}\n#adv-sched .as-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0}\n#adv-sched .as-tile{background:#fff;border:1px solid var(--as-line);border-left:4px solid var(--as-accent);border-radius:10px;padding:13px 16px}\n#adv-sched .as-tile h3{font-size:15px;font-weight:700;margin-bottom:3px}\n#adv-sched .as-tile p{font-size:14.5px;color:var(--as-muted)}\n#adv-sched .as-tile-ip{border-left-color:var(--as-ip)}\n#adv-sched .as-tile-on{border-left-color:var(--as-on)}\n#adv-sched .as-tile-flex{border-left-color:#c58a00}\n#adv-sched .as-panel{background:var(--as-soft);border:1px solid var(--as-line);border-radius:14px;padding:16px}\n#adv-sched .as-search{position:relative;display:block;margin:0}\n#adv-sched .as-search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--as-muted);pointer-events:none}\n#adv-sched .as-search input{display:block;width:100%;max-width:none;height:auto;margin:0;padding:11px 12px 11px 40px;font:inherit;font-size:16px;color:var(--as-ink);background:#fff;border:1px solid #c3cad3;border-radius:10px;box-shadow:none;outline:none}\n#adv-sched .as-search input:focus{border-color:var(--as-accent);box-shadow:0 0 0 3px rgba(@@AR@@,.18)}\n#adv-sched .as-filters{display:grid;gap:10px;margin-top:14px}\n#adv-sched .as-fgroup{display:flex;flex-wrap:wrap;align-items:center;gap:8px}\n#adv-sched .as-flabel{font-size:12.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--as-muted);min-width:72px}\n#adv-sched .as-chips{display:flex;flex-wrap:wrap;gap:6px}\n#adv-sched .as-chip{display:inline-flex;align-items:center;gap:6px;background:#fff;color:var(--as-ink);border:1px solid #c3cad3;border-radius:999px;padding:7px 14px;font-size:14.5px;font-weight:600;transition:background-color .15s,border-color .15s,color .15s}\n#adv-sched .as-chip:hover{border-color:var(--as-accent);background:#fff;color:var(--as-ink)}\n#adv-sched .as-chip[aria-pressed=\"true\"]{background:var(--as-accent);border-color:var(--as-accent);color:#fff}\n#adv-sched .as-dot{width:7px;height:7px;border-radius:50%;background:#e8590c}\n#adv-sched .as-chip[aria-pressed=\"true\"] .as-dot{background:#fff}\n#adv-sched .as-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 4px}\n#adv-sched .as-status{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}\n#adv-sched .as-count{font-size:15px;color:var(--as-muted)}\n#adv-sched .as-count strong{color:var(--as-ink)}\n#adv-sched .as-clear{background:none;border:0;padding:0;color:var(--as-accent);font-size:15px;font-weight:600;text-decoration:underline}\n#adv-sched .as-seg{display:inline-flex;background:#fff;border:1px solid #c3cad3;border-radius:999px;padding:3px}\n#adv-sched .as-seg button{background:transparent;border:0;border-radius:999px;padding:6px 14px;font-size:14px;font-weight:600;color:var(--as-muted)}\n#adv-sched .as-seg button[aria-pressed=\"true\"]{background:var(--as-accent-soft);color:var(--as-accent)}\n#adv-sched .as-views{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}\n#adv-sched .as-sortbox{display:flex;align-items:center;gap:8px}\n#adv-sched .as-sortl{font-size:13.5px;font-weight:600;color:var(--as-muted)}\n#adv-sched .as-section{margin-top:22px}\n#adv-sched .as-sec-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding-bottom:8px;margin-bottom:12px;border-bottom:2px solid var(--as-line)}\n#adv-sched .as-sec-head h3{font-size:21px;font-weight:800}\n#adv-sched .as-sec-meta{font-size:14px;color:var(--as-muted)}\n#adv-sched .as-today{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#a33a06;background:#fff0e5;border-radius:999px;padding:2px 9px}\n#adv-sched .as-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:12px}\n#adv-sched .as-card{display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--as-line);border-radius:12px;padding:14px 16px}\n#adv-sched .as-card.is-now{border-color:var(--as-now);box-shadow:0 0 0 2px #fde2df}\n#adv-sched .as-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}\n#adv-sched .as-time{font-size:15px;font-weight:700;color:var(--as-accent);font-variant-numeric:tabular-nums}\n#adv-sched .as-now{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--as-now);border-radius:999px;padding:2px 8px;white-space:nowrap}\n#adv-sched .as-prof{font-size:18px;font-weight:700;line-height:1.25}\n#adv-sched .as-badges{display:flex;flex-wrap:wrap;gap:5px}\n#adv-sched .as-b{font-size:12.5px;font-weight:700;line-height:1.4;padding:2px 9px;border-radius:999px}\n#adv-sched .as-b-ip{color:var(--as-ip);background:var(--as-ip-bg)}\n#adv-sched .as-b-on{color:var(--as-on);background:var(--as-on-bg)}\n#adv-sched .as-b-p0{color:#5b3aa8;background:#efe9fa}\n#adv-sched .as-b-p1{color:#8f4500;background:#fcefe0}\n#adv-sched .as-b-p2{color:#a3204f;background:#fae7ee}\n#adv-sched .as-b-p3{color:#0f6b5c;background:#ddf3ee}\n#adv-sched .as-b-p4{color:#4d5d00;background:#eef3d3}\n#adv-sched .as-b-p5{color:#3d3aa8;background:#e9e8fb}\n#adv-sched .as-b-p6{color:#7a4a1f;background:#f3ebe3}\n#adv-sched .as-b-p7{color:#4a5563;background:#eceff3}\n#adv-sched .as-line{display:flex;align-items:flex-start;gap:7px;font-size:14.5px;color:#39424e;overflow-wrap:anywhere}\n#adv-sched .as-line svg{margin-top:3px;color:var(--as-muted)}\n#adv-sched .as-notes{font-size:13.5px;color:#5c4a00;background:#fff7dc;border-radius:8px;padding:6px 10px}\n#adv-sched .as-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:4px}\n#adv-sched .as-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:9px;font-size:14px;font-weight:700;line-height:1.2;border:1px solid var(--as-accent);color:var(--as-accent);background:#fff}\n#adv-sched .as-btn:hover{background:var(--as-accent-soft);text-decoration:none}\n#adv-sched .as-btn-primary{background:var(--as-accent);color:#fff}\n#adv-sched .as-btn-primary:hover{background:var(--as-accent-dark);color:#fff}\n#adv-sched .as-empty{text-align:center;color:var(--as-muted);border:1px dashed #c3cad3;border-radius:12px;padding:36px 16px;margin-top:20px}\n#adv-sched .as-empty p{margin-bottom:10px}\n#adv-sched .as-foot{margin-top:28px;padding-top:12px;border-top:1px solid var(--as-line);font-size:13.5px;color:var(--as-muted)}\n@media (max-width:600px){#adv-sched .as-hero{padding:22px 18px 20px}#adv-sched .as-title{font-size:27px}#adv-sched .as-flabel{min-width:0;width:100%}#adv-sched .as-info{gap:8px;margin:12px 0}#adv-sched .as-tile{padding:10px 12px}#adv-sched .as-tile p{font-size:13.5px}#adv-sched .as-prog{font-size:13px;padding:4px 10px}#adv-sched .as-sub{font-size:15px}#adv-sched .as-bar{align-items:flex-start}}\n@media print{#adv-sched .as-panel,#adv-sched .as-seg,#adv-sched .as-sortbox,#adv-sched .as-clear,#adv-sched .as-actions{display:none!important}#adv-sched .as-hero{background:none;color:#000;border:1px solid #999}#adv-sched .as-title{color:#000}#adv-sched .as-card{break-inside:avoid}}\n@media (prefers-reduced-motion:reduce){#adv-sched *{transition:none!important}}";
+const EXAMPLE_CSV="Professor,Day,Start,End,Mode,Programs,Room,Email,Zoom Link,Booking Link,Notes\nShari Mekonen,Monday,12:00 PM,1:00 PM,Online,ANI; MMD; VAT,,smekonen@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/7211349225,,Email for an online appointment\nJosué A Advincola,Monday,2:00 PM,3:30 PM,Online,ANI,,jadvincola@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/9863105972?omn=88153260941,,\nMelanie Oram,Monday,2:00 PM,3:30 PM,In Person or Online,ANI; VAT,S-622C,moram@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/4168412929,,Email for an online appointment\nAnna Pinkas,Monday,3:30 PM,4:45 PM,Online,ANI; MMD,,apinkas@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/81838549173?pwd=QTRTTHZEOXQ5Zm82akd3dHZSQmtWdz09,,By appointment — email to schedule; Zoom passcode: 395624\nNaRhee Ahn,Monday,4:00 PM,5:00 PM,Online,ANI; VAT,,naahn@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/2061599307?pwd=ZVZDbEJXUHR4YlFFeXh2RCt5ZGcxUT09,,\nJanet Esquirol,Tuesday,8:00 AM,9:00 AM,Online,ANI; MMD,,jesquirol@bmcc.cuny.edu,,https://tinyurl.com/wjduknz3,\nChris Stein,Tuesday,11:00 AM,12:00 PM,Online,ANI; MMD; VAT,,cstein@bmcc.cuny.edu,,https://calendly.com/bmcc-stein/office-hours,\nTassos Rigopoulos,Tuesday,11:00 AM,12:00 PM,In Person or Online,ANI; VAT,S-622H,arigopoulos@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/9988467066,,\nCarlo Diego,Tuesday,12:00 PM,2:00 PM,In Person or Online,ANI; MMD; VAT,S-622F,cdiego@bmcc.cuny.edu,,https://calendly.com/cdiego/office-hours,\nJames Sayegh,Tuesday,12:00 PM,1:00 PM,In Person,VAT,S-622G,jsayegh@bmcc.cuny.edu,,,\nPavel Bez (Bez Vise),Tuesday,12:00 PM,1:00 PM,In Person,VAT,S-617,pbez@bmcc.cuny.edu,,,\nRevital Kaisar,Tuesday,2:15 PM,3:15 PM,In Person or Online,ANI; MMD,S-622F,rkaisar@bmcc.cuny.edu,,https://calendly.com/rkaisar/academic-advisement-with-professor-kaisar,\nJamal Sullivan,Tuesday,3:00 PM,4:00 PM,Online,ANI; MMD; VAT,S-622H,jsullivan@bmcc.cuny.edu,,https://calendly.com/jsullivan-bmcc,\nBurt Miller,Wednesday,9:00 AM,10:00 AM,In Person,ANI,S-622F,bmiller@bmcc.cuny.edu,,,\nCarlo Diego,Wednesday,9:00 AM,10:00 AM,In Person or Online,ANI; MMD; VAT,S-622F,cdiego@bmcc.cuny.edu,,https://calendly.com/cdiego/office-hours,\nJames Sayegh,Wednesday,9:00 AM,10:00 AM,In Person,VAT,S-622G,jsayegh@bmcc.cuny.edu,,,\nBurt Miller,Wednesday,10:00 AM,11:00 AM,In Person,ANI,S-642A,bmiller@bmcc.cuny.edu,,,\nIra Epstein,Wednesday,10:00 AM,12:00 PM,Online,MMD,,iepstein@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/86060307071,,\nOwen Roberts,Wednesday,10:00 AM,12:00 PM,Online,ANI; MMD,,oroberts@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/84361735529?from=addon,,\nGeorge Stevenson,Wednesday,10:30 AM,11:30 AM,Online,ANI; VAT,,gstevenson@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/5461348691,,\nMelanie Oram,Wednesday,10:30 AM,12:00 PM,Online,ANI; VAT,,moram@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/4168412929,,Email for an online appointment\nChris Stein,Wednesday,1:00 PM,2:00 PM,In Person,ANI; MMD; VAT,S-622E,cstein@bmcc.cuny.edu,,,\nJosué A Advincola,Wednesday,2:30 PM,3:30 PM,In Person,ANI,S-617,jadvincola@bmcc.cuny.edu,,,\nPavel Bez (Bez Vise),Wednesday,4:30 PM,5:30 PM,Online,VAT,,pbez@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/8425977857,,\nTassos Rigopoulos,Wednesday,4:30 PM,5:30 PM,In Person or Online,ANI; VAT,S-622H,arigopoulos@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/9988467066,,\nOwen Roberts,Thursday,10:00 AM,11:00 AM,Online,ANI; MMD,,oroberts@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/84334215721?from=addon,,\nTassos Rigopoulos,Thursday,11:00 AM,12:00 PM,Online,ANI; VAT,,arigopoulos@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/9988467066,,\nJames Sayegh,Thursday,12:00 PM,1:00 PM,Online,VAT,,jsayegh@bmcc.cuny.edu,,,\nShari Mekonen,Thursday,12:00 PM,1:00 PM,In Person or Online,ANI; MMD; VAT,S-622D,smekonen@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/7211349225,,Email for an online appointment\nChris Stein,Thursday,1:30 PM,2:30 PM,Online,ANI; MMD; VAT,,cstein@bmcc.cuny.edu,,https://calendly.com/bmcc-stein/advisement,\nJamal Sullivan,Thursday,2:00 PM,3:00 PM,Online,ANI; MMD; VAT,,jsullivan@bmcc.cuny.edu,,https://calendly.com/jsullivan-bmcc,\nNaRhee Ahn,Thursday,2:00 PM,3:00 PM,Online,ANI; VAT,,naahn@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/2061599307?pwd=ZVZDbEJXUHR4YlFFeXh2RCt5ZGcxUT09,,\nRevital Kaisar,Thursday,2:15 PM,3:15 PM,In Person or Online,ANI; MMD,S-622F,rkaisar@bmcc.cuny.edu,,https://calendly.com/rkaisar/academic-advisement-with-professor-kaisar,\nGeorge Stevenson,Thursday,3:00 PM,5:00 PM,In Person or Online,ANI; VAT,S-622G,gstevenson@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/5461348691,,\nShon Keane,Thursday,4:00 PM,5:00 PM,Online,ANI; VAT,,skeane@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/9231546700?pwd=MmpNcStYamhkOUFDS05uSDZhencvdz09,,\nTassos Rigopoulos,Friday,9:00 AM,10:00 AM,Online,ANI; VAT,,arigopoulos@bmcc.cuny.edu,https://bmcc-cuny.zoom.us/j/9988467066,,\nDiana Kate Kirtz,Friday,10:00 AM,12:00 PM,Online,ANI; VAT,,dkirtz@bmcc.cuny.edu,,,Email for an online appointment; Zoom meeting ID: 724-578-4580\nIra Epstein,Friday,10:00 AM,1:00 PM,Online,MMD,,iepstein@bmcc.cuny.edu,,https://calendly.com/ira-epstein/30min,\nJanet Esquirol,Friday,2:00 PM,3:00 PM,Online,ANI; MMD,,jesquirol@bmcc.cuny.edu,,https://tinyurl.com/wjduknz3,\nShon Keane,Friday,2:00 PM,3:00 PM,In Person,ANI; VAT,S-622C,skeane@bmcc.cuny.edu,,,\n";
+const EXAMPLE_SETTINGS={dept:"Media Arts and Technology Department",college:"BMCC",title:"Faculty Advisement Schedule",semester:"Fall 2026",subtitle:"Find an advisor by day, format, or program",programs:[{code:"ANI",name:"Animation and Motion Graphics"},{code:"MMD",name:"Multimedia Programming and Design"},{code:"VAT",name:"Video Arts and Technology"}],accent:"#1d4f91",nameSort:"first",updated:"2026-11-19",ip:"Rooms are on the **6th floor, south side of 199 Chambers Street**, in the MEA office area (S-622 and S-642).",on:"Use **Join Zoom** during the listed hours, or **Book a time** to reserve a slot. Some faculty ask you to email first — check the notes.",flex:"Slots tagged both ways are flexible — choose whichever works for you. Every advisor’s email is listed if you need another time.",banner:"",tz:"America/New_York",foot:"All times are Eastern Time."};
+const NEW_SETTINGS={dept:"Your Department",college:"BMCC",title:"Faculty Advisement Schedule",semester:"Spring 2027",subtitle:"Find an advisor by day, format, or program",programs:[{code:"ABC",name:"First program name"},{code:"XYZ",name:"Second program name"}],accent:"#1d4f91",nameSort:"first",updated:"",ip:"Rooms are listed on each card. Check the building and floor before you go.",on:"Use **Join Zoom** during the listed hours, or **Book a time** to reserve a slot. Some faculty ask you to email first — check the notes.",flex:"Slots tagged both ways are flexible — choose whichever works for you. Every advisor’s email is listed if you need another time.",banner:"",tz:"America/New_York",foot:"All times are Eastern Time."};
+const FAC_HEAD=["Professor","Email","Programs","Room","Zoom Link","Booking Link","Notes"];
+const SLOT_HEAD=["Professor","Day","Start","End","Mode","Room","Zoom Link","Booking Link","Notes"];
+const FLAT_HEAD=["Professor","Day","Start","End","Mode","Programs","Room","Email","Zoom Link","Booking Link","Notes"];
+const TEMPLATE_FAC=[FAC_HEAD,["Alex Morgan","amorgan@bmcc.cuny.edu","ABC","S-500","","",""],["Sam Lee","slee@bmcc.cuny.edu","ABC; XYZ","S-510","https://bmcc-cuny.zoom.us/j/1234567890","","Email for an online appointment"],["Jordan Diaz","jdiaz@bmcc.cuny.edu","XYZ","","","https://calendly.com/example/advising",""]];
+const TEMPLATE_SLOTS=[SLOT_HEAD,["Alex Morgan","Monday","10:00 AM","11:00 AM","In Person","","","",""],["Sam Lee","Wednesday","2:00 PM","3:30 PM","In Person or Online","","","",""],["Sam Lee","Friday","11:00 AM","12:00 PM","Online","","","",""],["Jordan Diaz","Thursday","4:00 PM","5:00 PM","Online","","","",""]];
+const HOWTO=[["How this workbook works"],["Faculty sheet: one row per advisor. Enter email, programs, usual room, Zoom link, booking link and notes once."],["Slots sheet: one row per advising slot. The Professor name must match a name on the Faculty sheet."],["Rooms only show on in-person slots. Zoom and booking links only show on online slots."],["On the Slots sheet, fill Room, Zoom Link, Booking Link or Notes only when that slot is different from the advisor's usual details."],["Mode: In Person, Online, or In Person or Online. Programs: codes separated by semicolons, for example ANI; MMD."],["Times look like 12:00 PM. Days are Monday to Sunday."],["When you're done, bring the whole workbook back into the Advisement Schedule Builder."]];
+const KEY="advsched-builder-v3",KEY_V2="advsched-builder-v2",KEY_V1="advsched-builder-v1",UIKEY="advsched-builder-ui";
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const $=s=>document.querySelector(s);
+
+/* ---------- small helpers ---------- */
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])).replace(/[^\x00-\x7f]/gu,c=>"&#"+c.codePointAt(0)+";");
+const rich=s=>esc(s).replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");
+const cmt=s=>String(s||"").replace(/-{2,}/g,"-").replace(/[<>]/g,"").replace(/[^\x00-\x7f]/gu,"");
+const asciiJSON=v=>JSON.stringify(v).replace(/[\u007f-\uffff]/g,c=>"\\u"+c.charCodeAt(0).toString(16).padStart(4,"0")).replace(/</g,"\\u003c").replace(/>/g,"\\u003e").replace(/&/g,"\\u0026");
+const hex2rgb=h=>{h=String(h).replace("#","");if(h.length===3)h=h.split("").map(c=>c+c).join("");const n=parseInt(h,16);return [n>>16&255,n>>8&255,n&255];};
+const rgb2hex=a=>"#"+a.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,"0")).join("");
+const mix=(a,b,t)=>{const x=hex2rgb(a),y=hex2rgb(b);return rgb2hex(x.map((v,i)=>v+(y[i]-v)*t));};
+const lum=h=>{const c=hex2rgb(h).map(v=>{v/=255;return v<=.03928?v/12.92:((v+.055)/1.055)**2.4;});return .2126*c[0]+.7152*c[1]+.0722*c[2];};
+const contrast=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+const fmtMin=(m,mer)=>{let h=Math.floor(m/60);const mi=m%60,suf=h<12?" AM":" PM";h=h%12||12;return h+":"+String(mi).padStart(2,"0")+(mer?suf:"");};
+const longDate=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||"");return m?MONTHS[+m[2]-1]+" "+(+m[3])+", "+m[1]:"";};
+const todayISO=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+const dayName=c=>(DAYS_ALL.find(d=>d[0]===c)||[c,c])[1];
+
+const SUFFIX_RE=/^(jr|sr|ii|iii|iv|phd|edd|dfa|mfa|md|esq)\.?$/i;
+function nameKey(n,by){const raw=String(n||"");if(by!=="last")return raw;const w=raw.replace(/\([^)]*\)/g," ").replace(/,/g," ").trim().split(/\s+/).filter(Boolean);while(w.length>1&&SUFFIX_RE.test(w[w.length-1]))w.pop();if(w.length<2)return raw;const l=w.pop();return l+" "+w.join(" ");}
+const nameCmp=by=>(a,b)=>nameKey(a,by).localeCompare(nameKey(b,by))||String(a).localeCompare(String(b));
+
+/* ---------- CSV ---------- */
+function parseDelimited(text){
+  text=String(text).replace(/^\uFEFF/,"");
+  const first=(text.split(/\r?\n/).find(l=>l.trim())||"");
+  const count=ch=>first.split(ch).length;
+  const delim=count("\t")>count(",")?"\t":(count(";")>count(",")?";":",");
+  const rows=[];let row=[],f="",q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+    else if(c==='"'&&f==="")q=true;
+    else if(c===delim){row.push(f);f="";}
+    else if(c==="\n"||c==="\r"){if(c==="\r"&&text[i+1]==="\n")i++;row.push(f);rows.push(row);row=[];f="";}
+    else f+=c;
+  }
+  if(f!==""||row.length){row.push(f);rows.push(row);}
+  return rows.filter(r=>r.some(x=>String(x).trim()!==""));
+}
+function toDelimited(rows,delim){
+  const cell=v=>{v=String(v==null?"":v);return (delim===","?/[",\r\n]|^\s|\s$/:/["\t\r\n]/).test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  return rows.map(r=>r.map(cell).join(delim)).join(delim===","?"\r\n":"\n");
+}
+const ALIAS={};
+[["prof","professor prof name faculty facultyname facultymember advisor adviser instructor"],["day","day weekday days"],["start","start starttime from begin begins"],["end","end endtime to until ends"],["time","time times hours timerange advisinghours officehours"],["mode","mode format modality delivery type"],["programs","programs program majors major majorss programsadvised advises"],["room","room location office roomnumber usualroom defaultroom officeroom"],["email","email emailaddress mail"],["zoom","zoom zoomlink zoomurl meetinglink meeting"],["book","booking bookinglink book bookingurl calendly appointmentlink schedulinglink signup signuplink"],["link","link links url"],["notes","notes note comments comment instructions details"]].forEach(([k,list])=>list.split(" ").forEach(a=>ALIAS[a]=k));
+const normHead=h=>String(h).toLowerCase().replace(/[^a-z0-9]/g,"");
+function parseClock(raw){
+  const s=String(raw).trim().toLowerCase().replace(/\./g,"").replace(/\s+/g,"");
+  if(s==="noon")return {m:720,mer:true};
+  if(s==="midnight")return {m:0,mer:true};
+  const m=/^(\d{1,2})(?::?(\d{2}))?(?::\d{2})?(am|pm|a|p)?$/.exec(s);
+  if(!m)return null;
+  let h=+m[1];const mi=+(m[2]||0);
+  if(mi>59)return null;
+  if(m[3]){if(h<1||h>12)return null;return {m:(h%12+(m[3][0]==="p"?12:0))*60+mi,mer:true};}
+  if(h>23)return null;
+  return {m:h*60+mi,mer:false,h};
+}
+function resolveTimes(a,b,warn){
+  let s=parseClock(a),e=parseClock(b);
+  if(!s||!e)return null;
+  const bare=x=>{if(x.h>=13||x.h===0)return x.m;if(x.h>=7)return x.m;warn("Read "+fmtMin(x.m,false)+" as "+fmtMin(x.m+720,true)+" because no AM or PM was given");return x.m+720;};
+  if(!s.mer&&e.mer){let sm=(s.h%12)*60+s.m%60+(e.m>=720?720:0);if(sm>=e.m)sm-=720;if(sm<0)sm+=720;return [sm,e.m];}
+  if(s.mer&&!e.mer){let em=(e.h%12)*60+e.m%60+(s.m>=720?720:0);if(em<=s.m)em+=720;return [s.m,em];}
+  if(!s.mer&&!e.mer){let sm=bare(s),em=bare(e);if(em<=sm&&em+720>sm)em+=720;return [sm,em];}
+  return [s.m,e.m];
+}
+function parseDays(raw){
+  const parts=String(raw).toLowerCase().split(/\s*(?:\/|,|&|\+|\band\b)\s*/).filter(Boolean);
+  const out=[];
+  for(const p of parts){const k=p.trim().slice(0,3);const d=DAYS_ALL.find(x=>x[0].toLowerCase()===k);if(!d)return null;out.push(d[0]);}
+  return out.length?out:null;
+}
+function parseMode(raw){
+  const t=String(raw||"").toLowerCase();
+  if(!t.trim())return null;
+  const both=/hybrid|both|either/.test(t);
+  const ip=both||/person|campus|office|f2f|face/.test(t);
+  const on=both||/online|zoom|virtual|remote|web/.test(t);
+  if(!ip&&!on)return null;
+  return [ip?"In Person":null,on?"Online":null].filter(Boolean);
+}
+const URL_RE=/https?:\/\/[^\s"'<>]+/i;
+const EMAIL_RE=/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i;
+const hhmm=m=>String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+const fromHHMM=v=>{const m=/^(\d{1,2}):(\d{2})/.exec(v||"");return m?(+m[1])*60+(+m[2]):null;};
+let idSeq=0;
+const newId=()=>"i"+(++idSeq)+Math.random().toString(36).slice(2,6);
+const cleanEmail=v=>String(v||"").replace(/[;,]+$/,"").replace(/\s+/g,"").replace(/^mailto:/i,"").toLowerCase();
+const splitCodes=v=>[...new Set(String(v||"").split(/[;,\/|]+|\s+/).map(x=>x.trim().toUpperCase()).filter(Boolean))];
+const cleanRoom=v=>/^(zoom|online|virtual|n\/?a|none|-)$/i.test(v)?"":v;
+const blankFac=name=>({_id:newId(),name:name||"",email:"",programs:[],room:"",zoom:"",book:"",notes:""});
+const blankSlot=(fid,day)=>({_id:newId(),fid:fid||"",day:day||"Mon",start:"",end:"",mode:"",room:"",zoom:"",book:"",notes:"",_imp:[],_raw:{}});
+const isURL=v=>/^https?:\/\/\S+$/i.test(v);
+
+/* ---------- minimal .xlsx reader and writer (no libraries) ---------- */
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+const crc32=b=>{let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRC_T[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;};
+function zipStore(files){
+  const enc=new TextEncoder(),parts=[],central=[];let off=0;
+  const u16=v=>[v&255,(v>>>8)&255],u32=v=>[v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255];
+  files.forEach(([name,text])=>{
+    const nb=enc.encode(name),db=enc.encode(text),crc=crc32(db);
+    const lh=new Uint8Array([].concat(u32(0x04034b50),u16(20),u16(0x0800),u16(0),u16(0),u16(0x21),u32(crc),u32(db.length),u32(db.length),u16(nb.length),u16(0)));
+    parts.push(lh,nb,db);
+    central.push(new Uint8Array([].concat(u32(0x02014b50),u16(20),u16(20),u16(0x0800),u16(0),u16(0),u16(0x21),u32(crc),u32(db.length),u32(db.length),u16(nb.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(off))),nb);
+    off+=lh.length+nb.length+db.length;
+  });
+  const cd=central.reduce((a,b)=>a+b.length,0);
+  const end=new Uint8Array([].concat(u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(cd),u32(off),u16(0)));
+  return new Blob(parts.concat(central,[end]),{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+const xesc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,"");
+const colName=i=>{let s="";i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;};
+const XML_HEAD='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n',OX="http://schemas.openxmlformats.org";
+function sheetXML(rows,widths,frozen){
+  const data=rows.map((row,ri)=>'<row r="'+(ri+1)+'">'+row.map((v,ci)=>(v===""||v==null)?"":'<c r="'+colName(ci)+(ri+1)+'" t="inlineStr"'+(ri===0?' s="1"':"")+'><is><t xml:space="preserve">'+xesc(v)+"</t></is></c>").join("")+"</row>").join("");
+  const view=frozen?'<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>':"";
+  const cols=widths?"<cols>"+widths.map((w,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>').join("")+"</cols>":"";
+  return XML_HEAD+'<worksheet xmlns="'+OX+'/spreadsheetml/2006/main">'+view+cols+"<sheetData>"+data+"</sheetData></worksheet>";
+}
+function buildXLSX(sheets){
+  const R=OX+"/officeDocument/2006/relationships";
+  const styles=XML_HEAD+'<styleSheet xmlns="'+OX+'/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  const files=[
+    ["[Content_Types].xml",XML_HEAD+'<Types xmlns="'+OX+'/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+sheets.map((s,i)=>'<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join("")+"</Types>"],
+    ["_rels/.rels",XML_HEAD+'<Relationships xmlns="'+OX+'/package/2006/relationships"><Relationship Id="rId1" Type="'+R+'/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ["xl/workbook.xml",XML_HEAD+'<workbook xmlns="'+OX+'/spreadsheetml/2006/main" xmlns:r="'+R+'"><sheets>'+sheets.map((s,i)=>'<sheet name="'+xesc(s.name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join("")+"</sheets></workbook>"],
+    ["xl/_rels/workbook.xml.rels",XML_HEAD+'<Relationships xmlns="'+OX+'/package/2006/relationships">'+sheets.map((s,i)=>'<Relationship Id="rId'+(i+1)+'" Type="'+R+'/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join("")+'<Relationship Id="rId'+(sheets.length+1)+'" Type="'+R+'/styles" Target="styles.xml"/></Relationships>'],
+    ["xl/styles.xml",styles]
+  ];
+  sheets.forEach((s,i)=>files.push(["xl/worksheets/sheet"+(i+1)+".xml",sheetXML(s.rows,s.widths,s.frozen)]));
+  return zipStore(files);
+}
+async function readXLSX(buf){
+  const b=new Uint8Array(buf),dv=new DataView(buf),dec=new TextDecoder();
+  let e=-1;for(let i=b.length-22;i>=Math.max(0,b.length-66000);i--){if(dv.getUint32(i,true)===0x06054b50){e=i;break;}}
+  if(e<0)throw new Error("This doesn't look like an .xlsx workbook.");
+  const n=dv.getUint16(e+10,true),files={};let p=dv.getUint32(e+16,true);
+  for(let k=0;k<n;k++){
+    if(dv.getUint32(p,true)!==0x02014b50)break;
+    const method=dv.getUint16(p+10,true),csize=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),xl=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
+    files[dec.decode(b.subarray(p+46,p+46+nl))]={method,csize,lo};p+=46+nl+xl+cl;
+  }
+  const read=async name=>{const f=files[name];if(!f)return null;const nl=dv.getUint16(f.lo+26,true),xl=dv.getUint16(f.lo+28,true),start=f.lo+30+nl+xl,data=b.subarray(start,start+f.csize);if(f.method===0)return dec.decode(data);if(f.method!==8||typeof DecompressionStream==="undefined")throw new Error("This browser can't open .xlsx files. Save each sheet as CSV instead.");return await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();};
+  const xml=t=>new DOMParser().parseFromString(t||"<x/>","application/xml");
+  const tags=(node,name)=>Array.from(node.getElementsByTagNameNS("*",name));
+  const wb=xml(await read("xl/workbook.xml")),rels=xml(await read("xl/_rels/workbook.xml.rels"));
+  const rel={};tags(rels,"Relationship").forEach(r=>rel[r.getAttribute("Id")]=r.getAttribute("Target"));
+  const ssText=await read("xl/sharedStrings.xml");
+  const ss=ssText?tags(xml(ssText),"si").map(si=>tags(si,"t").map(t=>t.textContent).join("")):[];
+  const out=[];
+  for(const sh of tags(wb,"sheet")){
+    const rid=sh.getAttributeNS(OX+"/officeDocument/2006/relationships","id")||sh.getAttribute("r:id");
+    const target=String(rel[rid]||"").replace(/^\/?xl\//,"").replace(/^\//,"");
+    const text=await read("xl/"+target);if(!text)continue;
+    const rows=[];
+    tags(xml(text),"row").forEach(row=>{
+      const r=[];
+      tags(row,"c").forEach(c=>{
+        const ref=c.getAttribute("r")||"",t=c.getAttribute("t");
+        const ci=ref?ref.replace(/\d+/g,"").split("").reduce((a,ch)=>a*26+ch.charCodeAt(0)-64,0)-1:r.length;
+        let v;
+        if(t==="s"){const x=tags(c,"v")[0];v=x?(ss[+x.textContent]||""):"";}
+        else if(t==="inlineStr"){v=tags(c,"t").map(x=>x.textContent).join("");}
+        else{const x=tags(c,"v")[0];v=x?x.textContent:"";if(t!=="str"&&t!=="b"&&t!=="e"&&v!==""&&!isNaN(+v))v=+v;}
+        r[ci]=v;
+      });
+      for(let i=0;i<r.length;i++)if(r[i]===undefined)r[i]="";
+      rows.push(r);
+    });
+    out.push({name:sh.getAttribute("name")||"Sheet",rows:rows.filter(x=>x.some(v=>String(v).trim()!==""))});
+  }
+  return out;
+}
+
+/* ---------- reading tables into faculty and slots ---------- */
+function headerMap(header){const col={},unknown=[];header.forEach((h,i)=>{const k=ALIAS[normHead(h)];if(k&&col[k]===undefined)col[k]=i;else if(!k&&String(h).trim())unknown.push(String(h).trim());});return {col,unknown};}
+function classify(rows){if(!rows||!rows.length)return null;const {col}=headerMap(rows[0]);if(col.prof===undefined)return null;return col.day!==undefined?"slots":"faculty";}
+const fracTime=v=>{const f=((v%1)+1)%1;return f===0&&v>=1?"":fmtMin(Math.round(f*1440)%1440,true);};
+const getter=col=>(r,k)=>{if(col[k]===undefined)return "";const v=r[col[k]];if(v==null)return "";if(typeof v==="number")return (k==="start"||k==="end"||k==="time")?fracTime(v):String(v);return String(v).trim();};
+function linkFields(get,r){
+  let notes=get(r,"notes").replace(/\s+/g," ");
+  const pull=v=>{const m=URL_RE.exec(v);const rest=v.replace(URL_RE,"").replace(/^[\s:;,|-]+|[\s:;,|-]+$/g,"");if(rest)notes=notes?notes+"; "+rest:rest;return m?m[0].replace(/[).,;]+$/,""):"";};
+  let zoom=pull(get(r,"zoom")),book=pull(get(r,"book"));
+  const link=pull(get(r,"link"));
+  if(link){if(/zoom\.us/i.test(link)){if(!zoom)zoom=link;}else if(!book)book=link;}
+  return {zoom,book,notes};
+}
+function parseSlotTable(rows){
+  const {col,unknown}=headerMap(rows[0]),get=getter(col);
+  if(col.start===undefined&&col.time===undefined)return {error:"The slots table needs Start and End columns (or one Time column)."};
+  const out=[];
+  rows.slice(1).forEach(r=>{
+    const imp=[],raw={};
+    const prof=get(r,"prof").replace(/\s+/g," "),dayRaw=get(r,"day"),modeRaw=get(r,"mode");
+    let a=get(r,"start"),b=get(r,"end");
+    if(!a&&col.time!==undefined){const parts=get(r,"time").split(/\s*(?:-|–|—|\bto\b)\s*/i);a=parts[0]||"";b=parts[1]||"";}
+    let start="",end="";
+    if(a||b){const t=resolveTimes(a,b,m=>imp.push(m));if(t){start=hhmm(t[0]);end=hhmm(t[1]%1440);}else raw.time=[a,b].filter(Boolean).join(" – ");}
+    const L=linkFields(get,r);
+    const pm=parseMode(modeRaw),mode=pm?(pm.length===2?"Both":pm[0]):"";
+    if(!pm&&modeRaw)raw.mode=modeRaw;
+    let days=parseDays(dayRaw);
+    if(!days){days=[""];if(dayRaw)raw.day=dayRaw;}
+    days.forEach(d=>out.push({prof,day:d,start,end,mode,programs:splitCodes(get(r,"programs")),room:cleanRoom(get(r,"room")),email:cleanEmail(get(r,"email")),zoom:L.zoom,book:L.book,notes:L.notes,_imp:imp.slice(),_raw:{...raw}}));
+  });
+  return {rows:out,unknown,flat:col.email!==undefined||col.programs!==undefined};
+}
+function parseFacultyTable(rows){
+  const {col,unknown}=headerMap(rows[0]),get=getter(col);
+  const out=rows.slice(1).map(r=>{const L=linkFields(get,r);return {name:get(r,"prof").replace(/\s+/g," "),email:cleanEmail(get(r,"email")),programs:splitCodes(get(r,"programs")),room:cleanRoom(get(r,"room")),zoom:L.zoom,book:L.book,notes:L.notes};}).filter(f=>f.name);
+  return {rows:out,unknown,col};
+}
+const modeOf=s=>s.mode==="Both"?["In Person","Online"]:s.mode?[s.mode]:[s.room?"In Person":null,(s.zoom||s.book)?"Online":null].filter(Boolean);
+function clearInherited(s,f){if(!f)return s;const m=modeOf(s);if(m.includes("In Person")&&s.room===f.room)s.room="";if(m.includes("Online")){if(s.zoom===f.zoom)s.zoom="";if(s.book===f.book)s.book="";}if(s.notes&&s.notes===f.notes)s.notes="";return s;}
+function slotFrom(r,fid){return {_id:newId(),fid,day:r.day,start:r.start,end:r.end,mode:r.mode,room:r.room,zoom:r.zoom,book:r.book,notes:r.notes,_imp:r._imp||[],_raw:r._raw||{}};}
+function normalize(rows){
+  const byName=new Map(),faculty=[];
+  rows.forEach(r=>{const k=r.prof.trim().toLowerCase();if(!byName.has(k)){const f=blankFac(r.prof.trim());f._rows=[];byName.set(k,f);faculty.push(f);}byName.get(k)._rows.push(r);});
+  const common=arr=>{const c={};arr.filter(Boolean).forEach(v=>c[v]=(c[v]||0)+1);let best="",n=0;Object.keys(c).forEach(v=>{if(c[v]>n){best=v;n=c[v];}});return best;};
+  const uniform=(list,k)=>{if(!list.length)return "";const v=list[0][k];return v&&list.every(r=>r[k]===v)?v:"";};
+  faculty.forEach(f=>{
+    const rs=f._rows;
+    f.email=common(rs.map(r=>r.email));
+    rs.forEach(r=>r.programs.forEach(c=>{if(!f.programs.includes(c))f.programs.push(c);}));
+    const ip=rs.filter(r=>modeOf(r).includes("In Person")),on=rs.filter(r=>modeOf(r).includes("Online"));
+    f.room=uniform(ip,"room");f.zoom=uniform(on,"zoom");f.book=uniform(on,"book");f.notes=uniform(rs,"notes");
+  });
+  const slots=rows.map(r=>{const f=byName.get(r.prof.trim().toLowerCase());return clearInherited(slotFrom(r,f._id),f);});
+  faculty.forEach(f=>delete f._rows);
+  return {faculty,slots};
+}
+function importTables(tables){
+  const slotT=[],facT=[];
+  tables.forEach(t=>{const k=classify(t.rows);if(k==="slots")slotT.push(t);else if(k==="faculty")facT.push(t);});
+  if(!slotT.length&&!facT.length)return {error:"Couldn't find a Professor column. The first row of each sheet must name the columns (see the format guide)."};
+  const msgs=[],unknown=[];
+  const copyFac=()=>S.faculty.map(f=>({...f,programs:f.programs.slice()}));
+  if(slotT.length){
+    const ps=parseSlotTable(slotT[0].rows);
+    if(ps.error)return {error:ps.error};
+    unknown.push(...ps.unknown);
+    if(facT.length){
+      const pf=parseFacultyTable(facT[0].rows);unknown.push(...pf.unknown);
+      const faculty=[],byName=new Map();
+      pf.rows.forEach(r=>{const k=r.name.toLowerCase();if(byName.has(k))return;const f={...blankFac(r.name),email:r.email,programs:r.programs,room:r.room,zoom:r.zoom,book:r.book,notes:r.notes};byName.set(k,f);faculty.push(f);});
+      const added=[];
+      const slots=ps.rows.map(r=>{const k=r.prof.trim().toLowerCase();let f=k?byName.get(k):null;if(k&&!f){f=blankFac(r.prof.trim());byName.set(k,f);faculty.push(f);added.push(f.name);}if(f){if(!f.email&&r.email)f.email=r.email;r.programs.forEach(c=>{if(!f.programs.includes(c))f.programs.push(c);});}return clearInherited(slotFrom(r,f?f._id:""),f);});
+      if(added.length)msgs.push(added.join(", ")+" "+(added.length>1?"were":"was")+" only on the slots sheet, so "+(added.length>1?"they were":"they were")+" added to Faculty");
+      return {faculty,slots,unknown,summary:"Loaded "+faculty.length+" advisor"+(faculty.length===1?"":"s")+" and "+slots.length+" slot"+(slots.length===1?"":"s"),msgs};
+    }
+    if(ps.flat){const n=normalize(ps.rows);return {faculty:n.faculty,slots:n.slots,unknown,summary:"Loaded "+n.slots.length+" slots for "+n.faculty.length+" advisors. Shared details moved to the Faculty tab",msgs};}
+    const faculty=copyFac(),byName=new Map(faculty.map(f=>[f.name.trim().toLowerCase(),f]));let added=0;
+    const slots=ps.rows.map(r=>{const k=r.prof.trim().toLowerCase();let f=k?byName.get(k):null;if(k&&!f){f=blankFac(r.prof.trim());faculty.push(f);byName.set(k,f);added++;}return clearInherited(slotFrom(r,f?f._id:""),f);});
+    return {faculty,slots,unknown,summary:"Loaded "+slots.length+" slots and kept the faculty details"+(added?", with "+added+" new advisor"+(added>1?"s":""):""),msgs};
+  }
+  const pf=parseFacultyTable(facT[0].rows);unknown.push(...pf.unknown);
+  const faculty=copyFac(),byName=new Map(faculty.map(f=>[f.name.trim().toLowerCase(),f]));let upd=0,add=0;
+  const has=k=>pf.col[k]!==undefined;
+  pf.rows.forEach(r=>{const k=r.name.toLowerCase();let f=byName.get(k);if(!f){f=blankFac(r.name);faculty.push(f);byName.set(k,f);add++;}else upd++;if(has("email"))f.email=r.email;if(has("programs"))f.programs=r.programs;if(has("room"))f.room=r.room;if(has("zoom")||has("link"))f.zoom=r.zoom;if(has("book")||has("link"))f.book=r.book;if(has("notes"))f.notes=r.notes;});
+  return {faculty,slots:S.slots.map(s=>({...s})),unknown,summary:"Updated "+upd+" advisor"+(upd===1?"":"s")+(add?" and added "+add:"")+". Slots unchanged",msgs:[]};
+}
+
+/* ---------- rollup and checks ---------- */
+function processData(faculty,slots){
+  const issues=[],out=[],fmap=new Map(faculty.map(f=>[f._id,f]));
+  const names={};faculty.forEach(f=>{const k=f.name.trim().toLowerCase();if(k)names[k]=(names[k]||0)+1;});
+  faculty.forEach((f,i)=>{
+    const add=(lvl,msg,fld)=>issues.push({lvl,row:"Advisor "+(i+1),who:f.name,msg,id:f._id,t:"f",f:fld});
+    if(!f.name.trim())add("err","Add the advisor's name.","name");
+    else if(names[f.name.trim().toLowerCase()]>1)add("warn","Another advisor has the same name. Merge them or tell them apart.","name");
+    const em=f.email.trim();
+    if(!em)add("warn","No email address","email");else if(!EMAIL_RE.test(em))add("warn","Email “"+em+"” doesn't look right","email");
+    if(f.zoom.trim()&&!isURL(f.zoom.trim()))add("warn","The Zoom link must start with https://, so it's left off","zoom");
+    if(f.book.trim()&&!isURL(f.book.trim()))add("warn","The booking link must start with https://, so it's left off","book");
+    if(f.name.trim()&&!slots.some(s=>s.fid===f._id))add("warn","No advising slots yet, so this advisor isn't on the page.","name");
+  });
+  slots.forEach((s,i)=>{
+    const n=i+1,f=fmap.get(s.fid),raw=s._raw||{};
+    const add=(lvl,msg,fld)=>issues.push({lvl,row:"Slot "+n,who:f?f.name:"",msg,id:s._id,t:"s",f:fld});
+    let bad=false;
+    if(!f){add("err","Choose the professor.","fid");bad=true;}
+    else if(!f.name.trim()){add("err","This advisor needs a name on the Faculty tab.","fid");bad=true;}
+    if(!s.day){add("err","Pick a day"+(raw.day?" (the file said “"+raw.day+"”)":"")+".","day");bad=true;}
+    const st=fromHHMM(s.start),en=fromHHMM(s.end);
+    if(st==null||en==null){add("err","Set the start and end time"+(raw.time?" (the file said “"+raw.time+"”)":"")+".",st==null?"start":"end");bad=true;}
+    else if(en<=st){add("err","The end time must be after the start time.","end");bad=true;}
+    let mode=s.mode==="Both"?["In Person","Online"]:s.mode?[s.mode]:null;
+    if(!mode){const g=[s.room.trim()?"In Person":null,(s.zoom.trim()||s.book.trim())?"Online":null].filter(Boolean);if(g.length){mode=g;add("warn","Format guessed as "+modeLabel(g)+(raw.mode?" (the file said “"+raw.mode+"”)":"")+". Choose one to confirm.","mode");}else{add("err","Choose a format: In person, Online, or both.","mode");bad=true;}}
+    (s._imp||[]).forEach(m=>add("warn",m,"start"));
+    if(bad)return;
+    const ip=mode.includes("In Person"),on=mode.includes("Online");
+    const sr=s.room.trim(),sz=s.zoom.trim(),sb=s.book.trim();
+    const fz=isURL(f.zoom.trim())?f.zoom.trim():"",fb=isURL(f.book.trim())?f.book.trim():"";
+    const room=sr||(ip?f.room.trim():""),zoom=(isURL(sz)?sz:"")||(on?fz:""),book=(isURL(sb)?sb:"")||(on?fb:""),notes=s.notes.trim()||f.notes.trim();
+    if(sz&&!isURL(sz))add("warn","This slot's Zoom link must start with https://, so it's left off","zoom");
+    if(sb&&!isURL(sb))add("warn","This slot's booking link must start with https://, so it's left off","book");
+    if(ip&&!room)add("warn","In person, but no room here or on the Faculty tab","room");
+    if(sr&&!ip)add("warn","Room "+sr+" is listed, but the format is Online only","room");
+    if(on&&!ip&&!zoom&&!book&&!notes)add("warn","Online, but no Zoom link, booking link or note here or on the Faculty tab","zoom");
+    out.push({prof:f.name.trim().replace(/\s+/g," "),day:s.day,s:st,e:en,mode,programs:f.programs.slice(),room,email:f.email.trim(),zoom,book,notes,line:n,id:s._id});
+  });
+  const seen={};
+  out.forEach(x=>{const k=[x.prof,x.day,x.s].join("|");if(seen[k])issues.push({lvl:"warn",row:"Slot "+x.line,who:x.prof,msg:"Same professor, day and start time as slot "+seen[k]+".",id:x.id,t:"s",f:"start"});else seen[k]=x.line;});
+  const byRoom={};
+  out.filter(x=>x.room&&x.mode.includes("In Person")).forEach(x=>{const k=x.day+"|"+x.room.toUpperCase();(byRoom[k]=byRoom[k]||[]).push(x);});
+  Object.values(byRoom).forEach(list=>{for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){const x=list[i],y=list[j];if(x.prof!==y.prof&&x.s<y.e&&y.s<x.e)issues.push({lvl:"warn",row:"Slot "+y.line,who:y.prof,msg:"Room "+y.room+" is also booked by "+x.prof+" (slot "+x.line+") on "+dayName(y.day)+", "+label(x,false)+".",id:y.id,t:"s",f:"room"});}});
+  const di=c=>DAYS_ALL.findIndex(d=>d[0]===c);
+  out.sort((x,y)=>di(x.day)-di(y.day)||x.s-y.s||x.prof.localeCompare(y.prof));
+  return {slots:out,issues};
+}
+function label(s,html){const same=(s.s<720)===(s.e<720);const dash=html?" &ndash; ":" \u2013 ";return (same?fmtMin(s.s,false):fmtMin(s.s,true))+dash+fmtMin(s.e,true);}
+function modeLabel(m){return m.length===2?"In Person or Online":m[0];}
+
+/* ---------- model ---------- */
+function makeModel(raw,parsed){
+  const issues=[];
+  const st={};
+  Object.keys(EXAMPLE_SETTINGS).forEach(k=>{if(k!=="programs")st[k]=String(raw[k]==null?"":raw[k]).trim();});
+  if(!/^#[0-9a-f]{6}$/i.test(st.accent)){if(st.accent)issues.push({lvl:"warn",row:"Details",who:"",msg:"Accent colour “"+st.accent+"” isn't a 6-digit hex code, so the default blue is used.",target:"f-accent-hex"});st.accent="#1d4f91";}
+  st.accent=st.accent.toLowerCase();
+  st.nameSort=st.nameSort==="last"?"last":"first";
+  try{new Intl.DateTimeFormat("en-US",{timeZone:st.tz||"America/New_York"});}catch(e){issues.push({lvl:"warn",row:"Details",who:"",msg:"Time zone “"+st.tz+"” isn't recognised, so America/New_York is used.",target:"f-tz"});st.tz="America/New_York";}
+  if(!st.tz)st.tz="America/New_York";
+  if(st.banner&&!/^https:\/\/[^\s"'<>]+$/i.test(st.banner)){issues.push({lvl:"warn",row:"Details",who:"",msg:"The banner URL must start with https://, so no banner is shown.",target:"f-banner"});st.banner="";}
+  if(!st.title)st.title="Faculty Advisement Schedule";
+  const defined=[],seen={};
+  (Array.isArray(raw.programs)?raw.programs:[]).forEach(p=>{const code=String(p&&p.code||"").trim().toUpperCase();if(!code||seen[code])return;seen[code]=1;defined.push([code,String(p.name||"").trim()]);});
+  const used=new Set(parsed.slots.flatMap(s=>s.programs));
+  const unnamed=defined.filter(p=>used.has(p[0])&&!p[1]).map(p=>p[0]);
+  const stray=[...used].filter(c=>!seen[c]);
+  if(unnamed.length)issues.push({lvl:"warn",row:"Programs",who:"",msg:"Add a full name for "+unnamed.join(", ")+".",target:"progs"});
+  if(stray.length)issues.push({lvl:"warn",row:"Programs",who:"",msg:"Advisors have "+stray.join(", ")+", which "+(stray.length>1?"aren't":"isn't")+" in the program list.",target:"progs"});
+  const unused=defined.filter(p=>!used.has(p[0])).map(p=>p[0]);
+  if(unused.length&&parsed.slots.length)issues.push({lvl:"warn",row:"Programs",who:"",msg:"No advisor has "+unused.join(", ")+" yet, so "+(unused.length>1?"their filters show":"its filter shows")+" no slots. Tag advisors on the Faculty tab in Edit data.",target:"progs"});
+  const programs=defined.map((p,i)=>[p[0],p[1]||p[0],i%8]);
+  stray.forEach((c,j)=>programs.push([c,c,(defined.length+j)%8]));
+  const pidx={},pname={};programs.forEach(p=>{pidx[p[0]]=p[2];pname[p[0]]=p[1];});
+  const days=DAYS_ALL.filter(d=>parsed.slots.some(s=>s.day===d[0]));
+  const profs=[...new Set(parsed.slots.map(s=>s.prof))].sort(nameCmp(st.nameSort));
+  return {st,programs,pidx,pname,days,profs,slots:parsed.slots,issues,date:longDate(st.updated)};
+}
+function eyebrow(st){return esc(st.dept)+(st.college?(st.dept?" &middot; ":"")+esc(st.college):"");}
+function subline(st){return [st.semester,st.subtitle].filter(Boolean).map(esc).join(" &middot; ");}
+function footline(st,date){const who=esc(st.dept)+(st.college?(st.dept?", ":"")+esc(st.college):"");return [esc(st.foot)+(st.semester?" "+esc(st.semester):""),who,date?"Last updated "+esc(date):""].filter(x=>x.trim()).join(" &middot; ");}
+
+/* ---------- runtime shipped inside the interactive version (kept free of "&&" so WordPress can't mangle it) ---------- */
+function ASRUN(cfg){
+var root=document.getElementById(cfg.id);
+if(!root){return;}
+var SLOTS=cfg.slots,DAYS=cfg.days,PROGRAMS=cfg.programs,TZ=cfg.tz;
+var MODES=[["In Person","In person"],["Online","Online"]];
+var state={q:"",day:"all",mode:"all",major:"all",view:"day",sort:cfg.sort==="last"?"last":"first"};
+var DASH=" \u2013 ",DOT=" \u00b7 ";
+function dayName(c){for(var i=0;i<DAYS.length;i++){if(DAYS[i][0]===c){return DAYS[i][1];}}return c;}
+function dayIndex(c){for(var i=0;i<DAYS.length;i++){if(DAYS[i][0]===c){return i;}}return 99;}
+function progIndex(c){for(var i=0;i<PROGRAMS.length;i++){if(PROGRAMS[i][0]===c){return i;}}return -1;}
+function nameKey(n){var raw=String(n);if(state.sort!=="last"){return raw;}var w=raw.replace(/\([^)]*\)/g," ").replace(/,/g," ").replace(/^\s+|\s+$/g,"").split(/\s+/);while(w.length>1){if(/^(jr|sr|ii|iii|iv|phd|edd|dfa|mfa|md|esq)\.?$/i.test(w[w.length-1])){w.pop();}else{break;}}if(w.length<2){return raw;}var l=w.pop();return l+" "+w.join(" ");}
+function toMin(t){var m=/^(\d{1,2}):(\d{2})\s*([AP])M$/i.exec(String(t).replace(/^\s+|\s+$/g,""));if(!m){return 0;}var h=parseInt(m[1],10)%12;if(m[3].toUpperCase()==="P"){h+=12;}return h*60+parseInt(m[2],10);}
+function fmt(min,mer){var h=Math.floor(min/60),m=min%60,suffix=h<12?" AM":" PM";h=h%12;if(h===0){h=12;}return h+":"+(m<10?"0":"")+m+(mer?suffix:"");}
+function label(s){var same=(s.s<720)===(s.e<720);return same?fmt(s.s,false)+DASH+fmt(s.e,true):fmt(s.s,true)+DASH+fmt(s.e,true);}
+function fold(t){t=String(t).toLowerCase();return t.normalize?t.normalize("NFD").replace(/[\u0300-\u036f]/g,""):t;}
+SLOTS.forEach(function(s,i){s.id=i;s.s=toMin(s.start);s.e=toMin(s.end);s.di=dayIndex(s.day);s.hay=fold(s.prof+" "+s.email+" "+s.room);});
+function zoneNow(){try{var parts=new Intl.DateTimeFormat("en-US",{timeZone:TZ,weekday:"short",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date());var o={};parts.forEach(function(p){o[p.type]=p.value;});return {day:o.weekday,min:(parseInt(o.hour,10)%24)*60+parseInt(o.minute,10)};}catch(err){var d=new Date();return {day:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()],min:d.getHours()*60+d.getMinutes()};}}
+function isLive(s,now){if(s.day!==now.day){return false;}if(now.min<s.s){return false;}return now.min<s.e;}
+function el(tag,cls,text){var n=document.createElement(tag);if(cls){n.className=cls;}if(text!==undefined){n.textContent=text;}return n;}
+var ICONS={pin:["M12 21s-6.5-5.8-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.2 12 21 12 21z","M12 12.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"],mail:["M4 6h16v12H4z","M4 7l8 6 8-6"],video:["M3.5 7h11v10h-11z","M14.5 10.5L20.5 7v10l-6-3.5"],cal:["M4 6h16v14H4z","M4 10h16","M8 3.5v4","M16 3.5v4"]};
+function icon(name){var NS="http://www.w3.org/2000/svg",svg=document.createElementNS(NS,"svg");var at={viewBox:"0 0 24 24","aria-hidden":"true",focusable:"false",fill:"none",stroke:"currentColor","stroke-width":"1.8","stroke-linecap":"round","stroke-linejoin":"round"};for(var k in at){svg.setAttribute(k,at[k]);}ICONS[name].forEach(function(d){var p=document.createElementNS(NS,"path");p.setAttribute("d",d);svg.appendChild(p);});return svg;}
+var results=root.querySelector(".as-results"),countEl=root.querySelector(".as-count"),clearBtn=root.querySelector(".as-clear"),input=root.querySelector(".as-search input"),sortBox=root.querySelector(".as-sortbox");
+function fill(key,items,decorate){var box=root.querySelector('.as-chips[data-filter="'+key+'"]');if(!box){return;}items.forEach(function(it){var b=el("button","as-chip",it[1]);b.type="button";b.setAttribute("data-filter",key);b.setAttribute("data-value",it[0]);b.setAttribute("aria-pressed",String(state[key]===it[0]));if(decorate){decorate(b,it);}box.appendChild(b);});}
+function buildChips(){var today=zoneNow().day;fill("day",[["all","All days"]].concat(DAYS.map(function(d){return [d[0],d[0],d[1]];})),function(b,it){if(it[2]){var lbl=it[2];if(it[0]===today){b.appendChild(el("span","as-dot"));lbl+=" (today)";b.title="Today";}b.setAttribute("aria-label",lbl);}});fill("mode",[["all","Any format"]].concat(MODES));fill("major",[["all","All programs"]].concat(PROGRAMS.map(function(p){return [p[0],p[0],p[1]];})),function(b,it){if(it[2]){b.title=it[2];b.setAttribute("aria-label",it[0]+", "+it[2]);}});}
+function sync(attr,key){var bs=root.querySelectorAll("button["+attr+"]");for(var i=0;i<bs.length;i++){var b=bs[i];if(attr==="data-filter"){if(b.getAttribute("data-filter")!==key){continue;}b.setAttribute("aria-pressed",String(b.getAttribute("data-value")===state[key]));}else{b.setAttribute("aria-pressed",String(b.getAttribute("data-view")===state.view));}}}
+function filtered(){return state.q!==""||state.day!=="all"||state.mode!=="all"||state.major!=="all";}
+function matches(s){if(state.day!=="all"){if(s.day!==state.day){return false;}}if(state.mode!=="all"){if(s.mode.indexOf(state.mode)<0){return false;}}if(state.major!=="all"){if(s.programs.indexOf(state.major)<0){return false;}}if(state.q!==""){if(s.hay.indexOf(state.q)<0){return false;}}return true;}
+function badge(cls,text,title){var b=el("span","as-b as-b-"+cls,text);if(title){b.title=title;}return b;}
+function progBadges(list,box){list.forEach(function(m){var i=progIndex(m);var ci=i<0?7:PROGRAMS[i][2];box.appendChild(badge("p"+(ci%8),m,i<0?"":PROGRAMS[i][1]));});}
+function line(ic,child){var d=el("div","as-line");d.appendChild(icon(ic));d.appendChild(child);return d;}
+function linkBtn(href,text,ic,primary,who){var a=el("a","as-btn"+(primary?" as-btn-primary":""));a.href=href;a.target="_blank";a.rel="noopener noreferrer";a.appendChild(icon(ic));a.appendChild(document.createTextNode(text));a.setAttribute("aria-label",text+" with "+who+" (opens in a new tab)");return a;}
+function card(s,view,now){var live=isLive(s,now);var c=el("div","as-card"+(live?" is-now":""));var top=el("div","as-card-top");top.appendChild(el("span","as-time",view==="prof"?dayName(s.day)+DOT+label(s):label(s)));if(live){top.appendChild(el("span","as-now","Now"));}c.appendChild(top);if(view==="day"){c.appendChild(el("h4","as-prof",s.prof));}var bd=el("div","as-badges");s.mode.forEach(function(m){bd.appendChild(m==="Online"?badge("on","Online"):badge("ip","In person"));});if(view==="day"){progBadges(s.programs,bd);}c.appendChild(bd);if(s.room){c.appendChild(line("pin",el("span",null,"Room "+s.room)));}if(view==="day"){if(s.email){var a=el("a",null,s.email);a.href="mailto:"+s.email;c.appendChild(line("mail",a));}}if(s.notes){c.appendChild(el("p","as-notes",s.notes));}if(s.zoom||s.book){var act=el("div","as-actions");if(s.zoom){act.appendChild(linkBtn(s.zoom,"Join Zoom","video",true,s.prof));}if(s.book){act.appendChild(linkBtn(s.book,"Book a time","cal",!s.zoom,s.prof));}c.appendChild(act);}return c;}
+function section(title,meta,isToday){var sec=el("section","as-section");var head=el("div","as-sec-head");head.appendChild(el("h3",null,title));if(isToday){head.appendChild(el("span","as-today","Today"));}if(meta){head.appendChild(meta);}sec.appendChild(head);var grid=el("div","as-grid");sec.appendChild(grid);results.appendChild(sec);return grid;}
+function plural(n,w){return n+" "+w+(n===1?"":"s");}
+var lastSig="";
+function sig(now){return now.day+"|"+SLOTS.filter(function(s){return isLive(s,now);}).map(function(s){return s.id;}).join(",");}
+function render(){if(sortBox){sortBox.hidden=state.view!=="prof";}var now=zoneNow();lastSig=sig(now);var list=SLOTS.filter(matches);results.textContent="";countEl.textContent="";var profs={};SLOTS.forEach(function(s){profs[s.prof]=1;});if(filtered()){countEl.appendChild(document.createTextNode("Showing "));countEl.appendChild(el("strong",null,String(list.length)));countEl.appendChild(document.createTextNode(" of "+SLOTS.length+" advising slots"));}else{countEl.appendChild(el("strong",null,String(SLOTS.length)));countEl.appendChild(document.createTextNode(" advising slots"+DOT+Object.keys(profs).length+" advisors"));}clearBtn.hidden=!filtered();if(!list.length){var empty=el("div","as-empty");empty.appendChild(el("p",null,"No advising hours match these filters."));var rb=el("button","as-clear","Clear filters");rb.type="button";rb.setAttribute("data-clear","1");empty.appendChild(rb);results.appendChild(empty);return;}if(state.view==="day"){DAYS.forEach(function(d){var items=list.filter(function(s){return s.day===d[0];});if(!items.length){return;}items.sort(function(a,b){return a.s-b.s||a.prof.localeCompare(b.prof);});var grid=section(d[1],el("span","as-sec-meta",plural(items.length,"slot")),d[0]===now.day);items.forEach(function(s){grid.appendChild(card(s,"day",now));});});}else{var names=[];list.forEach(function(s){if(names.indexOf(s.prof)<0){names.push(s.prof);}});names.sort(function(a,b){return nameKey(a).localeCompare(nameKey(b))||a.localeCompare(b);});names.forEach(function(n){var items=list.filter(function(s){return s.prof===n;}).sort(function(a,b){return a.di-b.di||a.s-b.s;});var meta=el("span","as-sec-meta");if(items[0].email){var a=el("a",null,items[0].email);a.href="mailto:"+items[0].email;meta.appendChild(a);}var mb=el("span","as-badges");progBadges(items[0].programs,mb);var grid=section(n,meta,false);grid.parentNode.firstChild.appendChild(mb);items.forEach(function(s){grid.appendChild(card(s,"prof",now));});});}}
+function reset(){state.q="";state.day="all";state.mode="all";state.major="all";input.value="";["day","mode","major"].forEach(function(k){sync("data-filter",k);});render();input.focus();}
+function findBtn(t){while(t){if(t===root){return null;}if(t.tagName==="BUTTON"){return t;}t=t.parentNode;}return null;}
+root.addEventListener("click",function(ev){var t=findBtn(ev.target);if(!t){return;}var f=t.getAttribute("data-filter");if(f){state[f]=t.getAttribute("data-value");sync("data-filter",f);render();return;}var so=t.getAttribute("data-sort");if(so){state.sort=so;var sb=root.querySelectorAll("button[data-sort]");for(var i=0;i<sb.length;i++){sb[i].setAttribute("aria-pressed",String(sb[i].getAttribute("data-sort")===so));}render();return;}var v=t.getAttribute("data-view");if(v){state.view=v;sync("data-view");render();return;}if(t.hasAttribute("data-clear")){reset();}});
+input.addEventListener("input",function(){state.q=fold(input.value.replace(/^\s+|\s+$/g,""));render();});
+buildChips();render();
+setInterval(function(){if(sig(zoneNow())!==lastSig){render();}},60000);
+}
+
+/* ---------- builders ---------- */
+const SEARCH_SVG='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>';
+const SCRIPT_OPEN="<"+"script>",SCRIPT_CLOSE="<"+"/script>";
+function buildInteractive(M){
+  const st=M.st,A=st.accent,rgb=hex2rgb(A).join(",");
+  const css=CSS_TPL.replace("@@A@@",A).replace("@@AD@@",mix(A,"#000000",.22)).replace("@@AS@@",mix(A,"#ffffff",.9)).replace("@@AR@@",rgb);
+  const cfg={id:"adv-sched",tz:st.tz,sort:st.nameSort,days:M.days,programs:M.programs,slots:M.slots.map(s=>({prof:s.prof,day:s.day,start:fmtMin(s.s,true),end:fmtMin(s.e,true),mode:s.mode,programs:s.programs,room:s.room,email:s.email,zoom:s.zoom,book:s.book,notes:s.notes}))};
+  const data="{\"id\":"+asciiJSON(cfg.id)+",\"tz\":"+asciiJSON(cfg.tz)+",\"sort\":"+asciiJSON(cfg.sort)+",\"days\":"+asciiJSON(cfg.days)+",\"programs\":"+asciiJSON(cfg.programs)+",\"slots\":[\n"+cfg.slots.map(asciiJSON).join(",\n")+"\n]}";
+  const tiles=[["ip","In person",st.ip],["on","Online",st.on],["flex","In person or online",st.flex]].filter(t=>t[2]).map(t=>'<div class="as-tile as-tile-'+t[0]+'"><h3>'+t[1]+"</h3><p>"+rich(t[2])+"</p></div>").join("\n");
+  const progs=M.programs.length?'<div class="as-programs">'+M.programs.map(p=>'<span class="as-prog"><strong>'+esc(p[0])+"</strong>"+(p[1]!==p[0]?esc(p[1]):"")+"</span>").join("")+"</div>":"";
+  const L=[];
+  L.push("<!-- "+cmt(st.title)+(st.semester?" ("+cmt(st.semester)+")":"")+": interactive version, made with the Advisement Schedule Builder on "+cmt(longDate(todayISO()))+". -->");
+  L.push("<!-- Needs a page that allows scripts. Most WordPress multisite networks, OpenLab included, strip them; use the static version there. -->");
+  L.push('<div id="adv-sched">');
+  L.push("<style>\n"+css+"\n</style>");
+  if(st.banner)L.push('<img class="as-banner" src="'+esc(st.banner)+'" alt="">');
+  L.push('<div class="as-hero">');
+  if(eyebrow(st))L.push('<p class="as-eyebrow">'+eyebrow(st)+"</p>");
+  L.push('<h2 class="as-title">'+esc(st.title)+"</h2>");
+  if(subline(st))L.push('<p class="as-sub">'+subline(st)+"</p>");
+  if(progs)L.push(progs);
+  L.push("</div>");
+  if(tiles)L.push('<div class="as-info">\n'+tiles+"\n</div>");
+  L.push('<div class="as-panel" role="search">');
+  L.push('<label class="as-search"><span class="as-sr">Search advisors</span>'+SEARCH_SVG+'<input type="search" placeholder="Search by professor, email, or room" autocomplete="off"></label>');
+  L.push('<div class="as-filters">');
+  L.push('<div class="as-fgroup" role="group" aria-labelledby="as-l-day"><span class="as-flabel" id="as-l-day">Day</span><div class="as-chips" data-filter="day"></div></div>');
+  L.push('<div class="as-fgroup" role="group" aria-labelledby="as-l-mode"><span class="as-flabel" id="as-l-mode">Format</span><div class="as-chips" data-filter="mode"></div></div>');
+  if(M.programs.length)L.push('<div class="as-fgroup" role="group" aria-labelledby="as-l-major"><span class="as-flabel" id="as-l-major">Program</span><div class="as-chips" data-filter="major"></div></div>');
+  L.push("</div>\n</div>");
+  L.push('<div class="as-bar">\n<div class="as-status"><p class="as-count" aria-live="polite"></p><button type="button" class="as-clear" data-clear="1" hidden>Clear filters</button></div>\n<div class="as-views"><div class="as-seg" role="group" aria-label="Group results"><button type="button" data-view="day" aria-pressed="true">By day</button><button type="button" data-view="prof" aria-pressed="false">By professor</button></div><div class="as-sortbox" hidden><span class="as-sortl" id="as-l-sort">Sort by</span><div class="as-seg" role="group" aria-labelledby="as-l-sort"><button type="button" data-sort="first" aria-pressed="'+(st.nameSort!=="last")+'">First name</button><button type="button" data-sort="last" aria-pressed="'+(st.nameSort==="last")+'">Last name</button></div></div></div>\n</div>');
+  L.push('<div class="as-results"></div>');
+  L.push('<noscript><p class="as-empty">This schedule needs JavaScript to display. Please enable it, or contact the department office.</p></noscript>');
+  L.push('<p class="as-foot">'+footline(st,M.date)+"</p>");
+  L.push(SCRIPT_OPEN+"\n("+ASRUN.toString()+")("+data+");\n"+SCRIPT_CLOSE);
+  L.push("</div>");
+  return L.join("\n").split("\n").filter(l=>l.trim()).join("\n")+"\n";
+}
+function buildPage(M){
+  const st=M.st;
+  const t=esc(st.title)+(st.semester?" &middot; "+esc(st.semester):"")+(st.college?" | "+esc(st.college):"");
+  const desc=esc([st.semester,"faculty advising hours"+(st.dept?" for the "+st.dept:"")+(st.college?" at "+st.college:"")].filter(Boolean).join(" ")+": days, times, rooms, Zoom and booking links.");
+  return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>'+t+'</title>\n<meta name="description" content="'+desc+'">\n<meta property="og:title" content="'+t+'">\n<meta property="og:description" content="'+desc+'">\n<meta property="og:type" content="website">\n<style>html{background:#ffffff}body{margin:0;padding:28px 16px 40px}@media (max-width:600px){body{padding:12px 10px 28px}}</style>\n</head>\n<body>\n<main>\n'+buildInteractive(M)+"</main>\n</body>\n</html>\n";
+}
+const GRID_STYLE="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,max(215px,max((100% - 25px) / 3,min((100% - 13px) / 2,(1024px - 100vw) * 999)),min(100%,(640px - 100vw) * 999))),1fr));column-gap:12px;row-gap:0;align-items:stretch;";
+function buildStatic(M){
+  const st=M.st,A=st.accent,C={ink:"#1d232b",muted:"#5a6573",line:"#dfe3e8",soft:"#f5f7fa"};
+  const badge=(fg,bg,txt,title)=>"<span"+(title?' title="'+esc(title)+'"':"")+' style="color:'+fg+";background-color:"+bg+';font-size:12.5px;font-weight:700;padding:2px 9px;border-radius:999px;margin-right:2px;white-space:nowrap;">'+esc(txt)+"</span> ";
+  const bIP=badge("#17663a","#e3f3e8","In person"),bON=badge("#0b55a3","#e3eefa","Online");
+  const bProg=c=>{const i=M.pidx[c];const p=PAL[(i==null?7:i)%8];return badge(p[0],p[1],c,M.pname[c]!==c?M.pname[c]:"");};
+  const btn=(href,text,who,primary)=>'<a href="'+esc(href)+'" target="_blank" rel="noopener noreferrer" aria-label="'+esc(text)+" with "+esc(who)+' (opens in a new tab)" style="'+(primary?"background-color:"+A+";color:#ffffff;":"background-color:#ffffff;color:"+A+";")+"border:1px solid "+A+';border-radius:9px;padding:6px 12px;margin:0 6px 0 0;font-size:14px;font-weight:700;text-decoration:none;box-shadow:none;white-space:nowrap;">'+esc(text)+" &rarr;</a> ";
+  const chip=(href,text)=>'<a href="'+href+'" style="color:'+A+';background-color:#ffffff;border:1px solid #c3cad3;border-radius:999px;padding:5px 12px;margin:0 2px 0 0;font-size:14.5px;font-weight:600;text-decoration:none;box-shadow:none;white-space:nowrap;">'+esc(text)+"</a> ";
+  const card=s=>{
+    const o=['<div style="background-color:#ffffff;border:1px solid '+C.line+';border-radius:12px;padding:14px 16px;margin:0 0 12px 0;display:flex;flex-direction:column;">'];
+    o.push('<div style="font-size:15px;font-weight:700;color:'+A+';">'+label(s,true)+"</div>");
+    o.push('<div style="font-size:18px;font-weight:700;line-height:1.3;margin:2px 0 6px 0;">'+esc(s.prof)+"</div>");
+    o.push('<div style="line-height:2;">'+s.mode.map(m=>m==="Online"?bON:bIP).join("")+s.programs.map(bProg).join("")+"</div>");
+    if(s.room)o.push('<div style="font-size:14.5px;margin-top:4px;"><strong>Room:</strong> '+esc(s.room)+"</div>");
+    if(s.email)o.push('<div style="font-size:14px;margin-top:2px;"><strong>Email:</strong> <a href="mailto:'+esc(s.email)+'" style="color:'+A+';box-shadow:none;">'+esc(s.email)+"</a></div>");
+    if(s.notes)o.push('<div style="font-size:13.5px;color:#5c4a00;background-color:#fff7dc;border-radius:8px;padding:6px 10px;margin-top:8px;">'+esc(s.notes)+"</div>");
+    if(s.zoom||s.book)o.push('<div style="margin-top:auto;padding-top:10px;line-height:2.4;">'+(s.zoom?btn(s.zoom,"Join Zoom",s.prof,true):"")+(s.book?btn(s.book,"Book a time",s.prof,!s.zoom):"")+"</div>");
+    o.push("</div>");
+    return o.join("");
+  };
+  const S=[];
+  S.push("<!-- "+cmt(st.title)+(st.semester?" ("+cmt(st.semester)+")":"")+": static version (safe for OpenLab), made with the Advisement Schedule Builder on "+cmt(longDate(todayISO()))+". Paste into a WordPress Custom HTML block. -->");
+  S.push('<div id="adv-sched-static" style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5;color:'+C.ink+';max-width:1120px;margin:0 auto;text-align:left;">');
+  if(st.banner)S.push('<img src="'+esc(st.banner)+'" alt="" style="width:100%;height:auto;border-radius:12px;margin:0 0 16px 0;">');
+  S.push('<div style="background-color:'+A+';color:#ffffff;border-radius:14px;padding:26px 26px 22px 26px;">');
+  if(eyebrow(st))S.push('<div style="font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:'+mix(A,"#ffffff",.82)+';">'+eyebrow(st)+"</div>");
+  S.push('<h2 style="font-family:inherit;font-size:32px;font-weight:800;line-height:1.15;letter-spacing:normal;text-transform:none;margin:6px 0 4px 0;padding:0;color:#ffffff;border:0;background:none;">'+esc(st.title)+"</h2>");
+  if(subline(st))S.push('<div style="font-size:16px;color:'+mix(A,"#ffffff",.92)+';">'+subline(st)+"</div>");
+  if(M.programs.length)S.push('<div style="margin-top:12px;line-height:2.5;">'+M.programs.map(p=>'<span style="font-size:14px;padding:5px 12px;border-radius:999px;background-color:'+mix(A,"#ffffff",.12)+";border:1px solid "+mix(A,"#ffffff",.3)+';margin-right:2px;white-space:nowrap;"><strong>'+esc(p[0])+"</strong>"+(p[1]!==p[0]?" "+esc(p[1]):"")+"</span> ").join("")+"</div>");
+  S.push("</div>");
+  [["In person","#17663a",st.ip],["Online","#0b55a3",st.on],["In person or online","#c58a00",st.flex]].filter(t=>t[2]).forEach(t=>S.push('<div style="background-color:#ffffff;border:1px solid '+C.line+";border-left:4px solid "+t[1]+';border-radius:10px;padding:12px 16px;margin:12px 0 0 0;"><div style="font-size:15px;font-weight:700;">'+t[0]+'</div><div style="font-size:14.5px;color:'+C.muted+';">'+rich(t[2])+"</div></div>"));
+  S.push('<div style="background-color:'+C.soft+";border:1px solid "+C.line+';border-radius:14px;padding:14px 16px;margin:16px 0 0 0;">');
+  S.push('<div style="font-size:12.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:'+C.muted+';margin-bottom:6px;">Jump to</div>');
+  S.push('<div style="line-height:2.6;">'+M.days.map(d=>chip("#as-"+d[0].toLowerCase(),d[1])).join("")+chip("#as-directory","Directory by professor")+"</div>");
+  S.push('<div style="font-size:14px;color:'+C.muted+';margin-top:6px;line-height:2;">Tags: '+bIP+bON+"slots with both are flexible"+(M.programs.length?" &middot; "+M.programs.map(p=>bProg(p[0])).join("")+"programs the advisor covers":"")+"</div>");
+  S.push("</div>");
+  M.days.forEach(d=>{
+    const items=M.slots.filter(s=>s.day===d[0]);
+    S.push('<details open id="as-'+d[0].toLowerCase()+'" style="margin:22px 0 0 0;">');
+    S.push('<summary style="cursor:pointer;font-size:21px;font-weight:800;padding:4px 0 8px 0;margin:0 0 12px 0;border-bottom:2px solid '+C.line+';">'+d[1]+' <span style="font-size:14px;font-weight:400;color:'+C.muted+';">&middot; '+items.length+" slot"+(items.length===1?"":"s")+"</span></summary>");
+    S.push('<div style="'+GRID_STYLE+'">');
+    items.forEach(s=>S.push(card(s)));
+    S.push("</div>");
+    S.push("</details>");
+  });
+  S.push('<details id="as-directory" style="margin:26px 0 0 0;">');
+  S.push('<summary style="cursor:pointer;font-size:21px;font-weight:800;padding:4px 0 8px 0;margin:0 0 12px 0;border-bottom:2px solid '+C.line+';">Directory by professor <span style="font-size:14px;font-weight:400;color:'+C.muted+';">&middot; '+M.profs.length+" advisor"+(M.profs.length===1?"":"s")+(st.nameSort==="last"?", by last name":"")+"</span></summary>");
+  const th='style="text-align:left;padding:8px 10px;border-bottom:2px solid '+C.line+";font-size:14px;background-color:"+C.soft+';"';
+  const td='style="text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid '+C.line+';font-size:14.5px;"';
+  S.push('<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;margin:0;border:0;"><thead><tr><th '+th+">Professor</th><th "+th+">Email</th>"+(M.programs.length?"<th "+th+">Programs</th>":"")+"<th "+th+">Advising hours</th></tr></thead><tbody>");
+  M.profs.forEach(p=>{
+    const its=M.slots.filter(s=>s.prof===p);const em=its.find(s=>s.email);
+    const hrs=its.map(s=>esc(s.day)+" "+label(s,true)+" ("+s.mode.map(m=>m==="Online"?"Online":"In person").join(" / ")+")").join("<br>");
+    const pr=[...new Set(its.flatMap(s=>s.programs))].join(", ");
+    S.push("<tr><td "+td+"><strong>"+esc(p)+"</strong></td><td "+td+">"+(em?'<a href="mailto:'+esc(em.email)+'" style="color:'+A+';box-shadow:none;">'+esc(em.email)+"</a>":"")+"</td>"+(M.programs.length?"<td "+td+">"+esc(pr)+"</td>":"")+"<td "+td+">"+hrs+"</td></tr>");
+  });
+  S.push("</tbody></table></div></details>");
+  S.push('<div style="margin-top:28px;padding-top:12px;border-top:1px solid '+C.line+";font-size:13.5px;color:"+C.muted+';">'+footline(st,M.date)+"</div>");
+  S.push("</div>");
+  return S.join("\n")+"\n";
+}
+
+/* ---------- exports ---------- */
+const facById=id=>S.faculty.find(f=>f._id===id);
+const modeText=s=>s.mode==="Both"?"In Person or Online":(s.mode||(s._raw&&s._raw.mode)||"");
+function slotTimes(s){const st=fromHHMM(s.start),en=fromHHMM(s.end),raw=s._raw||{};return [st==null?(raw.time||""):fmtMin(st,true),en==null?"":fmtMin(en,true)];}
+const facCells=f=>[f.name,f.email,f.programs.join("; "),f.room,f.zoom,f.book,f.notes];
+function slotCells(s){const f=facById(s.fid),t=slotTimes(s),raw=s._raw||{};return [f?f.name:"",s.day?dayName(s.day):(raw.day||""),t[0],t[1],modeText(s),s.room,s.zoom,s.book,s.notes];}
+function flatCells(s){const f=facById(s.fid)||blankFac(""),t=slotTimes(s),raw=s._raw||{},m=modeOf(s),ip=m.includes("In Person"),on=m.includes("Online");return [f.name,s.day?dayName(s.day):(raw.day||""),t[0],t[1],modeText(s),f.programs.join("; "),s.room||(ip?f.room:""),f.email,s.zoom||(on?f.zoom:""),s.book||(on?f.book:""),s.notes||f.notes];}
+function workbook(fac,slots){return buildXLSX([{name:"Faculty",rows:fac,widths:[26,30,16,12,44,44,40],frozen:true},{name:"Slots",rows:slots,widths:[26,12,11,11,20,12,44,44,40],frozen:true},{name:"How to use",rows:HOWTO,widths:[110]}]);}
+window.ASB={nameKey,nameCmp,importTables,parseDelimited,parseSlotTable,normalize,processData,makeModel,buildStatic,buildInteractive,buildPage,readXLSX,buildXLSX,EXAMPLE_CSV,EXAMPLE_SETTINGS};
+
+/* ---------- interface ---------- */
+const ICON_X='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const ICON_DUP='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>';
+const ICON_PLUS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+function addMissingPrograms(st,faculty){const have=new Set(st.programs.map(p=>String(p.code).toUpperCase()));faculty.forEach(f=>f.programs.forEach(c=>{if(!have.has(c)){have.add(c);st.programs.push({code:c,name:""});}}));}
+function parseProgramText(t){const out=[],seen={};String(t||"").split(/\n/).forEach(l=>{const x=l.trim();if(!x)return;const m=/^([A-Za-z0-9&+._-]{1,16})\s*(?:=|:|\||–|—|-)\s*(.+)$/.exec(x);const code=(m?m[1]:x.split(/\s+/)[0]).toUpperCase();if(seen[code])return;seen[code]=1;out.push({code,name:(m?m[2]:x.slice(code.length)).trim()});});return out;}
+function normSettings(raw){const st={...EXAMPLE_SETTINGS,...raw};st.programs=Array.isArray(st.programs)?st.programs.map(p=>({code:String(p.code||"").toUpperCase(),name:String(p.name||"")})):parseProgramText(st.programs);return st;}
+function flatRowsFromCSV(text){const t=parseDelimited(text);if(!t.length)return [];const ps=parseSlotTable(t);return ps.error?[]:ps.rows;}
+function fresh(settings,csv,source){const st=normSettings(settings);const n=normalize(flatRowsFromCSV(csv));addMissingPrograms(st,n.faculty);return {settings:st,faculty:n.faculty,slots:n.slots,source,fileName:""};}
+function freshTemplate(){const st=normSettings({...NEW_SETTINGS,updated:todayISO()});const imp=(()=>{const keep=S;S={faculty:[],slots:[]};const r=importTables([{name:"Faculty",rows:TEMPLATE_FAC},{name:"Slots",rows:TEMPLATE_SLOTS}]);S=keep;return r;})();addMissingPrograms(st,imp.faculty);return {settings:st,faculty:imp.faculty,slots:imp.slots,source:"new",fileName:""};}
+function cleanStored(v){
+  const faculty=(v.faculty||[]).map(f=>({...blankFac(""),...f,programs:Array.isArray(f.programs)?f.programs.map(String):[]}));
+  ["name","email","room","zoom","book","notes"].forEach(k=>faculty.forEach(f=>f[k]=String(f[k]==null?"":f[k])));
+  const ids=new Set(faculty.map(f=>f._id));
+  const slots=(v.slots||[]).map(s=>{const b={...blankSlot(),...s};["fid","day","start","end","mode","room","zoom","book","notes"].forEach(k=>b[k]=String(b[k]==null?"":b[k]));if(!ids.has(b.fid))b.fid="";b._imp=Array.isArray(b._imp)?b._imp:[];b._raw=b._raw&&typeof b._raw==="object"?b._raw:{};return b;});
+  return {faculty,slots};
+}
+function loadState(){
+  try{const v=JSON.parse(localStorage.getItem(KEY)||"null");if(v&&v.settings&&Array.isArray(v.faculty)&&Array.isArray(v.slots)){const st=normSettings(v.settings),d=cleanStored(v);addMissingPrograms(st,d.faculty);return {settings:st,faculty:d.faculty,slots:d.slots,source:v.source||"file",fileName:v.fileName||""};}}catch(e){}
+  try{const v=JSON.parse(localStorage.getItem(KEY_V2)||"null");if(v&&v.settings&&Array.isArray(v.rows)){const st=normSettings(v.settings);const rows=v.rows.map(r=>({prof:String(r.prof||""),day:String(r.day||""),start:String(r.start||""),end:String(r.end||""),mode:String(r.mode||""),programs:Array.isArray(r.programs)?r.programs:[],room:String(r.room||""),email:String(r.email||""),zoom:String(r.zoom||""),book:String(r.book||""),notes:String(r.notes||""),_imp:r._imp||[],_raw:r._raw||{}}));const n=normalize(rows);addMissingPrograms(st,n.faculty);return {settings:st,faculty:n.faculty,slots:n.slots,source:v.source||"file",fileName:v.fileName||""};}}catch(e){}
+  try{const v=JSON.parse(localStorage.getItem(KEY_V1)||"null");if(v&&v.settings&&typeof v.csv==="string"){const s=fresh(v.settings,v.csv,v.source||"file");s.fileName=v.fileName||"";return s;}}catch(e){}
+  return fresh(EXAMPLE_SETTINGS,EXAMPLE_CSV,"example");
+}
+let S=loadState();
+let UI={layout:"side",tab:"s"};
+try{UI={...UI,...JSON.parse(localStorage.getItem(UIKEY)||"{}")};}catch(e){}
+const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+const persistUI=()=>{try{localStorage.setItem(UIKEY,JSON.stringify(UI));}catch(e){}};
+let parsed={slots:[],issues:[]},model=null,out={static:"",inter:"",page:""};
+const view={ver:"static",dev:window.innerWidth<700?"phone":"desktop"};
+const toastEl=$("#toast"),toastMsg=$("#toast-msg"),toastAct=$("#toast-act");let toastT=0;
+function toast(msg,act){toastMsg.textContent=msg;if(act){toastAct.textContent=act.label;toastAct.hidden=false;toastAct.onclick=()=>{toastEl.classList.remove("show");act.fn();};toastEl.classList.add("has-act");}else{toastAct.hidden=true;toastAct.onclick=null;toastEl.classList.remove("has-act");}toastEl.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>toastEl.classList.remove("show"),act?7000:3200);}
+let dlNS=null;const inClaude=!!(window.claude&&window.claude.use);
+const showDl=on=>document.querySelectorAll(".dl").forEach(b=>b.hidden=!on);
+showDl(!inClaude);
+if(inClaude){try{window.claude.use("downloads").then(ns=>{dlNS=ns;showDl(!!ns);}).catch(()=>showDl(false));}catch(e){showDl(false);}}
+async function saveFile(name,data){
+  if(dlNS){try{await dlNS.save({filename:name,data});toast("Saved "+name);}catch(e){const c=e&&e.code;if(c==="declined")return;toast(c==="rate_limited"?"A save prompt is already open.":(c==="extension_not_enabled"||c==="rejected_extension")?"This file type can't be saved here.":"Couldn't save the file here. Use Copy instead.");}return;}
+  if(!inClaude){const blob=data instanceof Blob?data:new Blob([data],{type:name.endsWith(".csv")?"text/csv;charset=utf-8":"text/html;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);toast("Downloaded "+name);return;}
+  toast("Downloads aren't available here. Use Copy instead.");
+}
+async function copyText(text,ta){
+  if(!text){toast("Nothing to copy yet.");return;}
+  try{await navigator.clipboard.writeText(text);toast("Copied to clipboard");return;}catch(e){}
+  if(ta){try{const d=ta.closest("details");if(d)d.open=true;ta.focus();ta.select();if(document.execCommand("copy")){toast("Copied to clipboard");return;}}catch(e){}toast("Code selected: press Ctrl+C (Cmd+C on a Mac) to copy.");return;}
+  toast("Copy isn't available here.");
+}
+const slug=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"schedule";
+const progColor=code=>{const list=S.settings.programs.filter(p=>p.code);const i=list.findIndex(p=>p.code===code);return PAL[(i<0?7:i)%8];};
+const edited=()=>{if(S.source==="example")S.source="edited";};
+
+/* ----- program list ----- */
+const progBox=$("#progs");
+const usage=code=>code?S.faculty.filter(f=>f.programs.includes(code)).length:0;
+function renderPrograms(){
+  const list=S.settings.programs;
+  if(!list.length){progBox.innerHTML='<p class="pnone">No programs yet. Add one to show program badges and a program filter.</p>';return;}
+  let ci=0;
+  progBox.innerHTML=list.map((p,i)=>{const c=p.code?PAL[(ci++)%8]:["#9aa3ad","#eef1f4"];const n=usage(p.code);return '<div class="pr" data-i="'+i+'"><span class="sw" style="background:'+c[1]+";border-color:"+c[0]+'"></span><input class="pr-code" data-pf="code" value="'+esc(p.code)+'" maxlength="12" placeholder="CODE" aria-label="Program code '+(i+1)+'" spellcheck="false" autocomplete="off"><input class="pr-name" data-pf="name" value="'+esc(p.name)+'" placeholder="Full program name" aria-label="Full name for '+esc(p.code||"program "+(i+1))+'" autocomplete="off"><span class="pr-n">'+n+" advisor"+(n===1?"":"s")+'</span><button type="button" class="ib del" data-pact="del" aria-label="Remove '+esc(p.code||"this program")+'">'+ICON_X+"</button></div>";}).join("");
+}
+function refreshProgramMeta(){let ci=0;progBox.querySelectorAll(".pr").forEach(el=>{const i=+el.dataset.i,p=S.settings.programs[i];if(!p)return;const c=p.code?PAL[(ci++)%8]:["#9aa3ad","#eef1f4"];const sw=el.querySelector(".sw");sw.style.background=c[1];sw.style.borderColor=c[0];const n=usage(p.code);el.querySelector(".pr-n").textContent=n+" advisor"+(n===1?"":"s");el.querySelector(".pr-name").setAttribute("aria-label","Full name for "+(p.code||"program "+(i+1)));el.querySelector("[data-pact=del]").setAttribute("aria-label","Remove "+(p.code||"this program"));});}
+progBox.addEventListener("input",e=>{const el=e.target,pr=el.closest(".pr");if(!pr)return;const i=+pr.dataset.i,p=S.settings.programs[i];if(el.dataset.pf==="name"){p.name=el.value;schedule();return;}if(el.dataset.pf==="code"){const pos=el.selectionStart;el.value=el.value.toUpperCase().replace(/[^A-Z0-9&+._-]/g,"");try{el.setSelectionRange(pos,pos);}catch(x){}const code=el.value.trim();if(!usage(p.code)&&!S.settings.programs.some((q,j)=>j!==i&&code&&q.code===code)){p.code=code;refreshProgramMeta();refreshChips();schedule();}}});
+progBox.addEventListener("change",e=>{
+  const el=e.target;if(el.dataset.pf!=="code")return;
+  const i=+el.closest(".pr").dataset.i,p=S.settings.programs[i],old=p.code,code=el.value.trim().toUpperCase();
+  if(code===old)return;
+  if(!code){if(old){el.value=old;toast("A program needs a code. Remove it instead if it's not needed.");}return;}
+  if(S.settings.programs.some((q,j)=>j!==i&&q.code===code)){el.value=old;toast(code+" is already in the list.");return;}
+  p.code=code;let n=0;
+  if(old)S.faculty.forEach(f=>{const k=f.programs.indexOf(old);if(k>=0){f.programs[k]=code;n++;}});
+  refreshProgramMeta();refreshChips();refresh();
+  if(n)toast("Renamed "+old+" to "+code+" for "+n+" advisor"+(n===1?"":"s")+".");
+});
+progBox.addEventListener("click",e=>{
+  const b=e.target.closest("[data-pact=del]");if(!b)return;
+  const i=+b.closest(".pr").dataset.i,p=S.settings.programs[i];
+  const affected=S.faculty.filter(f=>f.programs.includes(p.code)).map(f=>f._id);
+  S.settings.programs.splice(i,1);
+  if(p.code)S.faculty.forEach(f=>{f.programs=f.programs.filter(c=>c!==p.code);});
+  renderPrograms();refreshChips();refresh();
+  toast("Removed "+(p.code||"program")+(affected.length?" from "+affected.length+" advisor"+(affected.length===1?"":"s"):""),{label:"Undo",fn:()=>{S.settings.programs.splice(i,0,p);affected.forEach(id=>{const f=facById(id);if(f&&!f.programs.includes(p.code))f.programs.push(p.code);});renderPrograms();refreshChips();refresh();}});
+});
+$("#p-add").addEventListener("click",()=>{S.settings.programs.push({code:"",name:""});renderPrograms();const ins=progBox.querySelectorAll(".pr-code");ins[ins.length-1].focus();});
+
+/* ----- data editor: two grids in tabs ----- */
+const edBox=$("#editor");
+const G={
+  s:{body:$("#s-body"),sheet:$("#s-sheet"),panel:$("#panel-s"),tab:$("#tab-s"),filter:$("#s-filter"),only:$("#s-only"),cols:10,list:()=>S.slots},
+  f:{body:$("#f-body"),sheet:$("#f-sheet"),panel:$("#panel-f"),tab:$("#tab-f"),filter:$("#f-filter"),only:$("#f-only"),cols:9,list:()=>S.faculty}
+};
+const DAY_OPTS=DAYS_ALL.map(d=>'<option value="'+d[0]+'">'+d[1]+"</option>").join("");
+const MODE_OPTS='<option value="">Choose format</option><option value="In Person">In person</option><option value="Online">Online</option><option value="Both">In person or online</option>';
+const issuesFor=id=>parsed.issues.filter(i=>i.id===id);
+const sortedFaculty=()=>{const c=nameCmp(S.settings.nameSort);return S.faculty.slice().sort((a,b)=>c(a.name||"￿",b.name||"￿"));};
+function profOptions(sel){const ok=S.faculty.some(f=>f._id===sel);return (ok?"":'<option value="" selected>Choose professor</option>')+sortedFaculty().map(f=>'<option value="'+f._id+'"'+(f._id===sel?" selected":"")+">"+esc(f.name||"(no name yet)")+"</option>").join("");}
+function chipsHTML(f){const list=S.settings.programs.filter(p=>p.code);const extra=f.programs.filter(c=>!list.some(p=>p.code===c));if(!list.length&&!extra.length)return '<span class="pnone">Add in Page details</span>';return list.map(p=>p.code).concat(extra).map(c=>{const col=progColor(c),on=f.programs.includes(c);const p=list.find(q=>q.code===c);return '<button type="button" class="pchip" data-act="prog" data-code="'+esc(c)+'" aria-pressed="'+on+'" style="--pc:'+col[0]+";--pb:"+col[1]+'"'+(p&&p.name?' title="'+esc(p.name)+'"':"")+">"+esc(c)+"</button>";}).join("");}
+function cell(id,k,lab,n,val,type){return '<input type="'+(type||"text")+'" id="'+id+"-"+k+'" data-f="'+k+'" aria-label="'+lab+", "+n+'" value="'+esc(val)+'" autocomplete="off" spellcheck="false">';}
+function slotRow(s,i){
+  const id=s._id,n="slot "+(i+1),sel=(k,lab,opts)=>'<select id="'+id+"-"+k+'" data-f="'+k+'" aria-label="'+lab+", "+n+'">'+opts+"</select>";
+  const day=(s.day?"":'<option value="" selected>Pick a day</option>')+DAY_OPTS.replace('value="'+s.day+'"','value="'+s.day+'" selected');
+  return '<tr class="gr" data-id="'+id+'"><td class="c-n"><div class="cn-in"><span class="rn">'+(i+1)+'</span><button type="button" class="ib sm" data-act="dup" aria-label="Duplicate '+n+'" title="Duplicate slot">'+ICON_DUP+'</button><button type="button" class="ib sm del" data-act="del" aria-label="Delete '+n+'" title="Delete slot">'+ICON_X+"</button></div></td>"
+  +'<td class="c-prof">'+sel("fid","Professor",profOptions(s.fid))+"</td><td>"+sel("day","Day",day)+"</td><td>"+cell(id,"start","Start time",n,s.start,"time")+"</td><td>"+cell(id,"end","End time",n,s.end,"time")+"</td><td>"+sel("mode","Format",MODE_OPTS.replace('value="'+s.mode+'"','value="'+s.mode+'" selected'))+"</td><td>"+cell(id,"room","Room",n,s.room)+"</td><td>"+cell(id,"zoom","Zoom link",n,s.zoom,"url")+"</td><td>"+cell(id,"book","Booking link",n,s.book,"url")+"</td><td>"+cell(id,"notes","Notes",n,s.notes)+"</td></tr>";
+}
+function facRow(f,i){
+  const id=f._id,n="advisor "+(i+1),cnt=S.slots.filter(s=>s.fid===id).length;
+  return '<tr class="gr" data-id="'+id+'"><td class="c-n"><div class="cn-in"><span class="rn">'+(i+1)+'</span><button type="button" class="ib sm" data-act="addslot" aria-label="Add a slot for '+esc(f.name||n)+'" title="Add a slot">'+ICON_PLUS+'</button><button type="button" class="ib sm del" data-act="del" aria-label="Delete '+esc(f.name||n)+'" title="Delete advisor">'+ICON_X+"</button></div></td>"
+  +'<td class="c-prof">'+cell(id,"name","Name",n,f.name).replace('autocomplete="off"','autocomplete="off" placeholder="Full name"')+"</td><td>"+cell(id,"email","Email",n,f.email,"email")+'</td><td class="c-prog"><div class="pchips">'+chipsHTML(f)+"</div></td><td>"+cell(id,"room","Usual room",n,f.room)+"</td><td>"+cell(id,"zoom","Zoom link",n,f.zoom,"url")+"</td><td>"+cell(id,"book","Booking link",n,f.book,"url")+"</td><td>"+cell(id,"notes","Notes",n,f.notes)+'</td><td class="c-cnt"><button type="button" class="linkbtn" data-act="slots" data-cnt>'+cnt+" slot"+(cnt===1?"":"s")+"</button></td></tr>";
+}
+function visible(t,x){
+  const g=G[t],q=g.filter.value.trim().toLowerCase();
+  if(g.only.checked&&!issuesFor(x._id).length)return false;
+  if(!q)return true;
+  const f=t==="s"?(facById(x.fid)||blankFac("")):x;
+  const hay=t==="s"?[f.name,dayName(x.day),x.room,f.room,modeText(x)]:[x.name,x.email,x.room,x.programs.join(" "),x.notes];
+  return hay.join(" ").toLowerCase().includes(q);
+}
+function renderGrid(t){
+  const g=G[t],list=g.list(),rowFn=t==="s"?slotRow:facRow;
+  const shown=list.map((x,i)=>[x,i]).filter(([x])=>visible(t,x));
+  g.body.innerHTML=shown.length?shown.map(([x,i])=>rowFn(x,i)).join(""):'<tr><td class="ed-empty" colspan="'+g.cols+'">'+(list.length?"Nothing matches the filter.":(t==="s"?"No slots yet. Add one, or load a workbook above.":"No advisors yet. Add one, or load a workbook above."))+"</td></tr>";
+  updateGridStatus();
+}
+const renderGrids=()=>{renderGrid("s");renderGrid("f");};
+function refreshChips(){G.f.body.querySelectorAll("tr.gr").forEach(tr=>{const f=facById(tr.dataset.id);if(f)tr.querySelector(".pchips").innerHTML=chipsHTML(f);});}
+function updateGridStatus(){
+  ["s","f"].forEach(t=>{
+    const g=G[t];
+    g.body.querySelectorAll("tr.gr").forEach(tr=>{
+      const id=tr.dataset.id,iss=issuesFor(id),err=iss.some(i=>i.lvl==="err");
+      tr.classList.toggle("err",err);tr.classList.toggle("warn",!err&&iss.length>0);tr.classList.toggle("has-msg",iss.length>0);
+      let m=tr.nextElementSibling;if(m&&!m.classList.contains("gm"))m=null;
+      if(!iss.length){if(m)m.remove();}
+      else{if(!m){m=document.createElement("tr");m.className="gm";m.innerHTML='<td colspan="'+g.cols+'"><div class="gm-t"></div></td>';tr.after(m);}m.classList.toggle("err",err);m.querySelector(".gm-t").innerHTML=iss.map(i=>'<span class="'+(i.lvl==="err"?"e":"w")+'">'+esc(i.msg)+"</span>").join("");}
+      if(t==="s"){
+        const s=S.slots.find(x=>x._id===id),f=s&&facById(s.fid);if(!s)return;
+        const m2=modeOf(s),ip=m2.includes("In Person"),on=m2.includes("Online");
+        const ph={room:f&&ip?f.room:"",zoom:f&&on?f.zoom:"",book:f&&on?f.book:"",notes:f?f.notes:""};
+        Object.keys(ph).forEach(k=>{const el=tr.querySelector('[data-f="'+k+'"]');if(el){el.placeholder=ph[k];el.title=ph[k]&&!el.value?"From the Faculty tab: "+ph[k]:"";}});
+      }else{
+        const n=S.slots.filter(s=>s.fid===id).length,b=tr.querySelector("[data-cnt]");if(b)b.textContent=n+" slot"+(n===1?"":"s");
+      }
+    });
+  });
+  const errs=new Set(parsed.issues.filter(i=>i.lvl==="err"&&i.id).map(i=>i.id)).size;
+  $("#ed-sum").textContent="Edit data ("+S.faculty.length+" advisor"+(S.faculty.length===1?"":"s")+", "+S.slots.length+" slot"+(S.slots.length===1?"":"s")+")";
+  $("#ed-fix").textContent=errs?errs+" to fix":"";
+  $("#tc-s").textContent=S.slots.length;$("#tc-f").textContent=S.faculty.length;
+}
+function setTab(t,focus){
+  UI.tab=t;persistUI();
+  ["s","f"].forEach(k=>{const on=k===t;G[k].tab.setAttribute("aria-selected",String(on));G[k].tab.tabIndex=on?0:-1;G[k].panel.hidden=!on;});
+  if(focus)G[t].tab.focus();
+}
+["s","f"].forEach(t=>{G[t].tab.addEventListener("click",()=>setTab(t));G[t].tab.addEventListener("keydown",e=>{if(e.key==="ArrowRight"||e.key==="ArrowLeft"){e.preventDefault();setTab(t==="s"?"f":"s",true);}});});
+function focusIn(t,id,fld){
+  edBox.open=true;setTab(t);
+  const g=G[t];let tr=g.body.querySelector('tr.gr[data-id="'+id+'"]');
+  if(!tr){g.filter.value="";g.only.checked=false;renderGrid(t);tr=g.body.querySelector('tr.gr[data-id="'+id+'"]');}
+  if(!tr)return;
+  g.sheet.scrollTop=Math.max(0,tr.offsetTop-g.sheet.clientHeight/2);
+  const el=tr.querySelector('[data-f="'+(fld||"")+'"]')||tr.querySelector("[data-f]");
+  if(el)el.focus();
+  tr.classList.add("flash");setTimeout(()=>tr.classList.remove("flash"),1400);
+}
+G.s.body.addEventListener("input",e=>{const el=e.target,k=el.dataset.f;if(!k)return;const s=S.slots.find(x=>x._id===el.closest("tr").dataset.id);if(!s)return;s[k]=el.value;if(!s._raw)s._raw={};if(k==="day")delete s._raw.day;if(k==="start"||k==="end"){delete s._raw.time;s._imp=[];}if(k==="mode")delete s._raw.mode;edited();schedule();});
+G.f.body.addEventListener("input",e=>{const el=e.target,k=el.dataset.f;if(!k)return;const f=facById(el.closest("tr").dataset.id);if(!f)return;f[k]=el.value;if(k==="name")G.s.body.querySelectorAll('option[value="'+f._id+'"]').forEach(o=>o.textContent=el.value||"(no name yet)");edited();schedule();});
+G.s.body.addEventListener("click",e=>{
+  const b=e.target.closest("[data-act]");if(!b)return;
+  const id=b.closest("tr").dataset.id,i=S.slots.findIndex(x=>x._id===id),s=S.slots[i];if(!s)return;
+  if(b.dataset.act==="del"){S.slots.splice(i,1);renderGrids();refresh();toast("Deleted slot "+(i+1),{label:"Undo",fn:()=>{S.slots.splice(i,0,s);renderGrids();refresh();focusIn("s",s._id,"fid");}});}
+  if(b.dataset.act==="dup"){const c={...s,_id:newId(),_imp:[],_raw:{}};S.slots.splice(i+1,0,c);renderGrids();refresh();focusIn("s",c._id,"day");toast("Slot duplicated below. Change the day or time.");}
+});
+G.f.body.addEventListener("click",e=>{
+  const b=e.target.closest("[data-act]");if(!b)return;
+  const id=b.closest("tr").dataset.id,i=S.faculty.findIndex(x=>x._id===id),f=S.faculty[i];if(!f)return;
+  const act=b.dataset.act;
+  if(act==="prog"){const c=b.dataset.code,k=f.programs.indexOf(c);if(k>=0)f.programs.splice(k,1);else f.programs.push(c);b.setAttribute("aria-pressed",String(k<0));refreshProgramMeta();edited();schedule();return;}
+  if(act==="addslot"){const s=blankSlot(f._id,"Mon");S.slots.push(s);G.s.filter.value="";G.s.only.checked=false;renderGrids();refresh();focusIn("s",s._id,"day");toast("Added a slot for "+(f.name||"this advisor")+". Set the day, time and format.");return;}
+  if(act==="slots"){G.s.filter.value=f.name;G.s.only.checked=false;renderGrid("s");setTab("s",true);return;}
+  if(act==="del"){const own=S.slots.map((s,k)=>[s,k]).filter(([s])=>s.fid===id);S.faculty.splice(i,1);S.slots=S.slots.filter(s=>s.fid!==id);renderGrids();refreshProgramMeta();refresh();toast("Deleted "+(f.name||"advisor")+(own.length?" and "+own.length+" slot"+(own.length===1?"":"s"):""),{label:"Undo",fn:()=>{S.faculty.splice(i,0,f);own.forEach(([s,k])=>S.slots.splice(Math.min(k,S.slots.length),0,s));renderGrids();refreshProgramMeta();refresh();}});}
+});
+function addSlot(){const last=S.slots[S.slots.length-1];const s=blankSlot(last?last.fid:(S.faculty[0]||{})._id,last?last.day||"Mon":"Mon");S.slots.push(s);G.s.filter.value="";G.s.only.checked=false;renderGrids();refresh();focusIn("s",s._id,"fid");}
+function addFac(){const f=blankFac("");S.faculty.push(f);G.f.filter.value="";G.f.only.checked=false;renderGrids();refresh();focusIn("f",f._id,"name");}
+$("#s-add").addEventListener("click",addSlot);$("#s-add2").addEventListener("click",addSlot);
+$("#f-add").addEventListener("click",addFac);$("#f-add2").addEventListener("click",addFac);
+const SORT_LABEL={time:"day and time",first:"first name",last:"last name"};
+function sortSlots(by){
+  const di=c=>{const k=DAYS_ALL.findIndex(d=>d[0]===c);return k<0?99:k;};
+  const nm=s=>(facById(s.fid)||{name:""}).name||"￿",cmp=nameCmp(by==="last"?"last":"first");
+  const when=(a,b)=>di(a.day)-di(b.day)||(fromHHMM(a.start)??9999)-(fromHHMM(b.start)??9999);
+  S.slots.sort((a,b)=>by==="time"?(when(a,b)||cmp(nm(a),nm(b))):(cmp(nm(a),nm(b))||when(a,b)));
+  renderGrid("s");refresh();toast("Slots sorted by "+SORT_LABEL[by]+".");
+}
+function sortFaculty(by){const cmp=nameCmp(by);S.faculty.sort((a,b)=>cmp(a.name||"￿",b.name||"￿"));renderGrids();refresh();toast("Advisors sorted by "+SORT_LABEL[by]+".");}
+document.querySelectorAll("[data-ssort]").forEach(b=>b.addEventListener("click",()=>sortSlots(b.dataset.ssort)));
+document.querySelectorAll("[data-fsort]").forEach(b=>b.addEventListener("click",()=>sortFaculty(b.dataset.fsort)));
+$("#b-jump").addEventListener("click",()=>{const h=$("#h-code");const still=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;h.scrollIntoView({behavior:still?"auto":"smooth",block:"start"});h.focus({preventScroll:true});});
+["s","f"].forEach(t=>{G[t].filter.addEventListener("input",()=>renderGrid(t));G[t].only.addEventListener("change",()=>renderGrid(t));});
+try{if(localStorage.getItem(UIKEY+"-editor")==="open")edBox.open=true;}catch(e){}
+edBox.addEventListener("toggle",()=>{try{localStorage.setItem(UIKEY+"-editor",edBox.open?"open":"closed");}catch(e){}});
+
+/* ----- summary, issues, code ----- */
+function renderData(){
+  const p=parsed,M=model;
+  const errItems=new Set(p.issues.filter(i=>i.lvl==="err").map(i=>i.id)).size;
+  const warns=p.issues.filter(i=>i.lvl!=="err").length+M.issues.length;
+  $("#n-slots").textContent=M.slots.length;$("#n-profs").textContent=M.profs.length;$("#n-days").textContent=M.days.length;
+  $("#n-issues").textContent=errItems+warns;$("#l-issues").textContent=errItems?"to fix or check":"warnings to check";
+  const src={example:"the MEA example",new:"the new schedule template",edited:"your edits"}[S.source]||(S.fileName||"pasted rows");
+  $("#status").innerHTML="<b>"+M.slots.length+"</b> slot"+(M.slots.length===1?"":"s")+" ready from <b>"+esc(src)+"</b>"+(errItems?' &middot; <span style="color:var(--err)">'+errItems+" left out until fixed</span>":"")+(warns?' &middot; <span style="color:var(--warn)">'+warns+" warning"+(warns===1?"":"s")+"</span>":"");
+  $("#sample-note").hidden=S.source!=="example";
+  const all=p.issues.filter(i=>i.lvl==="err").concat(p.issues.filter(i=>i.lvl!=="err"),M.issues);
+  $("#issues").innerHTML=all.length?all.map((x,k)=>'<button type="button" class="issue '+(x.lvl==="err"?"err":"warn")+'" data-k="'+k+'"><span class="k">'+esc(x.row||"Note")+"</span><span>"+(x.who?"<b>"+esc(x.who)+"</b>: ":"")+esc(x.msg)+"</span></button>").join(""):(M.slots.length?'<p class="allclear">No problems found. The code is ready to copy.</p>':"");
+  $("#issues").onclick=e=>{const b=e.target.closest(".issue");if(!b)return;const x=all[+b.dataset.k];if(x.id){focusIn(x.t,x.id,x.f);}else if(x.target){const t=document.getElementById(x.target);if(t){const d=t.closest("details");if(d)d.open=true;t.scrollIntoView({block:"center"});const inp=t.matches("input,textarea")?t:t.querySelector("input");if(inp)inp.focus({preventScroll:true});}}};
+  const A=M.st.accent,ok=contrast(A,"#ffffff")>=4.5;
+  const note=$("#accent-note");note.textContent=ok?"White text on this colour passes contrast checks.":"Too light for white text. Choose a darker shade.";note.className="fieldnote"+(ok?"":" warnline");
+  document.documentElement.style.setProperty("--accent",A);document.documentElement.style.setProperty("--accent-light",mix(A,"#ffffff",.6));
+}
+function renderCode(){
+  $("#t-static").value=out.static;$("#t-inter").value=out.inter;
+  const n=x=>x?x.length.toLocaleString()+" characters":"";
+  $("#n-static").textContent=n(out.static);$("#n-inter").textContent=n(out.inter);
+}
+
+/* ----- preview, full screen and layout ----- */
+const frame=$("#frame"),stage=$("#stage"),fsDlg=$("#fs"),fsFrame=$("#fs-frame"),fsStage=$("#fs-stage");
+let shown="",fsShown="";
+function previewDoc(snippet){return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:24px 20px 40px;background:#ffffff}</style></head><body>'+snippet+'<script>document.addEventListener("keydown",function(e){if(e.key==="Escape"){parent.postMessage("asb-esc","*");}});<'+'/script></body></html>';}
+function fit(st,fr){
+  const W={desktop:1280,tablet:820,phone:390}[view.dev],aw=st.clientWidth,ah=st.clientHeight;
+  if(!aw)return;
+  const sc=Math.min(1,aw/W);
+  fr.style.width=W+"px";fr.style.height=Math.ceil(ah/sc)+"px";fr.style.transform="scale("+sc+")";fr.style.left=Math.max(0,(aw-W*sc)/2)+"px";
+}
+function renderPreview(){
+  const has=model&&model.slots.length;
+  $("#stage-empty").hidden=!!has;frame.hidden=!has;
+  const doc=has?previewDoc(view.ver==="static"?out.static:out.inter):previewDoc('<p style="font-family:system-ui,sans-serif;color:#5a6573">Add at least one complete slot to see the schedule.</p>');
+  if(has&&doc!==shown){shown=doc;frame.srcdoc=doc;}
+  if(fsDlg.open&&doc!==fsShown){fsShown=doc;fsFrame.srcdoc=doc;}
+  fit(stage,frame);if(fsDlg.open)fit(fsStage,fsFrame);
+}
+const stageObs=new ResizeObserver(()=>fit(stage,frame));stageObs.observe(stage);
+const fsObs=new ResizeObserver(()=>{if(fsDlg.open)fit(fsStage,fsFrame);});fsObs.observe(fsStage);
+function syncSegs(){document.querySelectorAll("[data-ver]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.ver===view.ver)));document.querySelectorAll("[data-dev]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.dev===view.dev)));document.querySelectorAll("[data-layout]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.layout===UI.layout)));}
+document.addEventListener("click",e=>{
+  const v=e.target.closest("[data-ver]");if(v){view.ver=v.dataset.ver;syncSegs();renderPreview();return;}
+  const d=e.target.closest("[data-dev]");if(d){view.dev=d.dataset.dev;syncSegs();fit(stage,frame);if(fsDlg.open)fit(fsStage,fsFrame);return;}
+  const l=e.target.closest("[data-layout]");if(l){setLayout(l.dataset.layout);l.focus();}
+});
+function setLayout(v){UI.layout=v==="stack"?"stack":"side";persistUI();$("#wrap").classList.toggle("stack",UI.layout==="stack");syncSegs();requestAnimationFrame(()=>fit(stage,frame));}
+const fullBtn=$("#b-full");
+fullBtn.addEventListener("click",()=>{if(!(model&&model.slots.length)){toast("Add at least one complete slot first.");return;}try{fsDlg.showModal();}catch(e){fsDlg.setAttribute("open","");}document.body.classList.add("fs-open");fsShown="";renderPreview();requestAnimationFrame(()=>fit(fsStage,fsFrame));$("#fs-close").focus();});
+$("#fs-close").addEventListener("click",()=>fsDlg.close());
+window.addEventListener("message",e=>{if(e.data==="asb-esc"&&fsDlg.open&&e.source===fsFrame.contentWindow)fsDlg.close();});
+fsDlg.addEventListener("close",()=>{document.body.classList.remove("fs-open");fsFrame.removeAttribute("srcdoc");fsShown="";fullBtn.focus();});
+
+/* ----- refresh loop ----- */
+let timer=0,ptimer=0;
+function refresh(){
+  parsed=processData(S.faculty,S.slots);
+  model=makeModel(S.settings,parsed);
+  out=model.slots.length?{static:buildStatic(model),inter:buildInteractive(model),page:buildPage(model)}:{static:"",inter:"",page:""};
+  renderData();renderCode();updateGridStatus();
+  clearTimeout(ptimer);ptimer=setTimeout(renderPreview,250);
+  persist();
+}
+const schedule=()=>{clearTimeout(timer);timer=setTimeout(refresh,150);};
+function fillFields(){
+  document.querySelectorAll("[data-set]").forEach(el=>{el.value=S.settings[el.dataset.set]||"";});
+  const a=/^#[0-9a-f]{6}$/i.test(S.settings.accent)?S.settings.accent:"#1d4f91";$("#f-accent").value=a;$("#f-accent-hex").value=S.settings.accent||a;
+  document.querySelectorAll("input[name=nsort]").forEach(r=>{r.checked=r.value===(S.settings.nameSort==="last"?"last":"first");});
+  renderPrograms();
+}
+document.querySelectorAll("[data-set]").forEach(el=>el.addEventListener("input",()=>{S.settings[el.dataset.set]=el.value;schedule();}));
+document.querySelectorAll("input[name=nsort]").forEach(r=>r.addEventListener("change",()=>{if(!r.checked)return;S.settings.nameSort=r.value;G.s.body.querySelectorAll("select[data-f=fid]").forEach(sel=>{sel.innerHTML=profOptions(S.slots.find(x=>x._id===sel.closest("tr").dataset.id).fid);});schedule();}));
+$("#f-accent").addEventListener("input",e=>{S.settings.accent=e.target.value;$("#f-accent-hex").value=e.target.value;schedule();});
+$("#f-accent-hex").addEventListener("input",e=>{const v=e.target.value.trim();S.settings.accent=v;if(/^#[0-9a-f]{6}$/i.test(v))$("#f-accent").value=v;schedule();});
+
+/* ----- loading files ----- */
+function applyImport(r,source,label){
+  if(r.error){toast(r.error);return;}
+  S.faculty=r.faculty;S.slots=r.slots;S.source=source;S.fileName=label||"";
+  addMissingPrograms(S.settings,S.faculty);
+  ["s","f"].forEach(t=>{G[t].filter.value="";G[t].only.checked=false;});
+  renderPrograms();refresh();renderGrids();
+  const errs=new Set(parsed.issues.filter(i=>i.lvl==="err").map(i=>i.id)).size;
+  const extra=[].concat(r.msgs||[],r.unknown&&r.unknown.length?["Ignored columns: "+[...new Set(r.unknown)].join(", ")]:[]);
+  toast(r.summary+(errs?". "+errs+" to fix in Edit data":"")+(extra.length?". "+extra.join(". "):"")+".");
+  if(errs)edBox.open=true;
+}
+async function readFiles(list){
+  const files=Array.from(list||[]);if(!files.length)return;
+  const tables=[];
+  for(const f of files){
+    if(/\.(xls|numbers|ods)$/i.test(f.name)){toast(f.name+" isn't supported. Save it as .xlsx or CSV first.");return;}
+    try{
+      if(/\.xlsx$/i.test(f.name)){(await readXLSX(await f.arrayBuffer())).forEach(t=>tables.push({name:t.name,rows:t.rows}));}
+      else{const text=await f.text();if(text.slice(0,2)==="PK"){toast(f.name+" isn't plain text. Save it as CSV UTF-8 or .xlsx and try again.");return;}tables.push({name:f.name,rows:parseDelimited(text)});}
+    }catch(e){toast((e&&e.message)||("Couldn't read "+f.name+"."));return;}
+  }
+  applyImport(importTables(tables),"file",files.map(f=>f.name).join(" + "));
+}
+$("#file").addEventListener("change",e=>{readFiles(e.target.files);e.target.value="";});
+const drop=$("#drop");
+["dragenter","dragover"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop",e=>readFiles(e.dataTransfer&&e.dataTransfer.files));
+$("#b-paste").addEventListener("click",()=>{const t=$("#paste").value;if(!t.trim()){toast("Paste some rows first.");return;}applyImport(importTables([{name:"Pasted rows",rows:parseDelimited(t)}]),"paste","");$("#paste-box").open=false;$("#paste").value="";});
+const base=()=>slug(S.settings.dept)+"-advising-"+slug(S.settings.semester);
+const csv=rows=>"﻿"+toDelimited(rows,",")+"\r\n";
+$("#b-template").addEventListener("click",()=>saveFile("advisement-schedule-template.xlsx",workbook(TEMPLATE_FAC,TEMPLATE_SLOTS)));
+$("#b-export").addEventListener("click",()=>{if(!S.faculty.length&&!S.slots.length){toast("There's nothing to export yet.");return;}saveFile(base()+".xlsx",workbook([FAC_HEAD].concat(S.faculty.map(facCells)),[SLOT_HEAD].concat(S.slots.map(slotCells))));});
+$("#b-fac-csv").addEventListener("click",()=>saveFile(base()+"-faculty.csv",csv([FAC_HEAD].concat(S.faculty.map(facCells)))));
+$("#b-slots-csv").addEventListener("click",()=>saveFile(base()+"-slots.csv",csv([SLOT_HEAD].concat(S.slots.map(slotCells)))));
+$("#b-flat-csv").addEventListener("click",()=>saveFile(base()+"-combined.csv",csv([FLAT_HEAD].concat(S.slots.map(flatCells)))));
+$("#b-tpl-fac").addEventListener("click",()=>saveFile("faculty-template.csv",csv(TEMPLATE_FAC)));
+$("#b-tpl-slots").addEventListener("click",()=>saveFile("slots-template.csv",csv(TEMPLATE_SLOTS)));
+$("#b-copy-table").addEventListener("click",()=>{const rows=UI.tab==="f"?[FAC_HEAD].concat(S.faculty.map(facCells)):[SLOT_HEAD].concat(S.slots.map(slotCells));copyText(toDelimited(rows,"\t"),null);});
+function twoStep(btn,fn){let armed=false,t=0;const txt=btn.textContent;btn.addEventListener("click",()=>{if(!armed){armed=true;btn.textContent="Click again to replace your data";btn.classList.add("confirm");t=setTimeout(()=>{armed=false;btn.textContent=txt;btn.classList.remove("confirm");},4000);return;}clearTimeout(t);armed=false;btn.textContent=txt;btn.classList.remove("confirm");fn();});}
+twoStep($("#b-new"),()=>{S=freshTemplate();fillFields();refresh();renderGrids();edBox.open=true;toast("New schedule started with sample advisors and slots to replace.");});
+twoStep($("#b-example"),()=>{S=fresh(EXAMPLE_SETTINGS,EXAMPLE_CSV,"example");fillFields();refresh();renderGrids();toast("MEA example loaded.");});
+$("#c-static").addEventListener("click",()=>copyText(out.static,$("#t-static")));
+$("#c-inter").addEventListener("click",()=>copyText(out.inter,$("#t-inter")));
+$("#d-static").addEventListener("click",()=>out.static?saveFile(base()+"-static.html",out.static):toast("Nothing to download yet."));
+$("#d-inter").addEventListener("click",()=>out.inter?saveFile(base()+"-interactive.html",out.inter):toast("Nothing to download yet."));
+$("#d-page").addEventListener("click",()=>out.page?saveFile("index.html",out.page):toast("Nothing to download yet."));
+
+setLayout(UI.layout);syncSegs();setTab(UI.tab==="f"?"f":"s");
+fillFields();refresh();renderGrids();
+}
+
+</script>
+</body>
+</html>
